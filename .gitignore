@@ -1,0 +1,7 @@
+### Compiled files
+*.pyc
+### Pickle files
+*.pkl
+### Python notebooks
+*.ipynb
+
