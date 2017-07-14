@@ -10,6 +10,8 @@ See, e.g., stackregistration_sample_notebook.ipynb.
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import FFTW
+from astropy.modeling import models, fitting
+from scipy.stats import chi2
 
 # Import local libraries
 import display
@@ -92,7 +94,6 @@ class imstack(object):
             print("Alternatively, define a custom mask by setting the self.mask_fourierspace attribute manually.  The self.kr coordinates may be useful.")
             return
         return
-
 
     def findImageShifts(self, correlationType="cc", findMaxima="pixel", verbose=True):
         """
@@ -177,8 +178,6 @@ class imstack(object):
 
         return self.X_ij, self.Y_ij
 
-
-
     ########### Methods for correlating image pairs #############
 
     def getSingleCrossCorrelation(self, fft1, fft2):
@@ -219,8 +218,6 @@ class imstack(object):
             self.makeFourierMask()
             phase_correlation = np.abs(self.fftw.ifft(self.mask_fourierspace * fft2 * np.conj(fft1) / (np.abs(fft2)**2) ))
         return phase_correlation
-
-
 
     ########### Methods for getting shifts from correlation maxima ########## 
 
@@ -303,7 +300,6 @@ class imstack(object):
             cc[shifts[i,0],shifts[i,1]]=0
         return shifts
 
-
     ########### Methods for masking Rij matrix #############
 
     def update_Rij_mask(self):
@@ -351,21 +347,26 @@ class imstack(object):
 
         Inputs:
             method  str     Method to be used for outlier detection.
-                            Currenly supported: 'NN'
+                            Currenly supported: 'NN','PF'
 
         Currently supported outlier detection methods:
         NN - detects outliers by looking at the shifts of the nearest neighbor image pairs
         args:
             arg[0]: max_shift - outlier shift threshhold
+        PF - detercts outliers by creating a polynomial fit and then calculating
+        z-value:
+            arg[0]: Order Polynomial - No larger than 4 is recommended
+            arg[1]: Z-value - Z-value threshhold
         """
         if method=="NN":
             self.outlier_mask = self.get_outliers_NN(args[0])
+        elif method=="PF":
+            self.outlier_mask = self.get_outliers_PF(args[0],args[1])
         else:
-            print("Outlier detection method must be 'NN'. Skipping outlier detection")
+            print("Outlier detection method must be 'NN' or 'PF'. Skipping outlier detection")
         self.update_Rij_mask()
         return
-
-
+ 
     ############ Methods for outlier detection ###################
 
     def get_outliers_NN(self, max_shift):
@@ -381,89 +382,44 @@ class imstack(object):
         x_mask = np.ones_like(self.X_ij,dtype=bool)
         y_mask = np.ones_like(self.Y_ij,dtype=bool)
 
-        for i in range(self.nz_max-self.nz_min):
-            for j in range(i,self.nz_max-self.nz_min):
-                # Corners - more than one jump
-                if (i==0 and j==0):
-                    num_jumps=np.sum(np.abs(self.X_ij[i:i+2,j:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        x_mask[i,j]=False
-                elif (i==0 and j==self.nz_max-self.nz_min-1):
-                    num_jumps=np.sum(np.abs(self.X_ij[i:i+2,j-1:j+1]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        x_mask[i,j]=False
-                elif (i==self.nz_max-self.nz_min-1 and j==0):
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+1,j:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        x_mask[i,j]=False
-                elif (i==self.nz_max-self.nz_min-1 and j==self.nz_max-self.nz_min-1):
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+1,j-1:j+1]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        x_mask[i,j]=False
-                # Edges
-                elif (i==0):
-                    num_jumps=np.sum(np.abs(self.X_ij[i:i+2,j-1:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        x_mask[i,j]=False
-                elif (i==self.nz_max-self.nz_min-1):
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+1,j-1:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        x_mask[i,j]=False
-                elif (j==0):
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+2,j:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        x_mask[i,j]=False
-                elif (j==self.nz_max-self.nz_min-1):
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+2,j-1:j+1]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        x_mask[i,j]=False
-                # Bulk
+        size=self.nz_max-self.nz_min
+        for i in range(size):
+            jump_max=3
+            if i==0:
+                imin=0
+                jump_max=jump_max-1
+            else: 
+                imin=i-1
+            if i==size-1:
+                imax=size-1
+                jump_max=jump_max-1
+            else:
+                imax=i+2
+            jump_max1=jump_max
+            for j in range(i,size):
+                jump_max=jump_max1
+                if j==0:
+                    jmin=0
+                    jump_max=jump_max-1
                 else:
-                    num_jumps=np.sum(np.abs(self.X_ij[i-1:i+2,j-1:j+2]-self.X_ij[i,j])>max_shift)
-                    if num_jumps>3:
-                        x_mask[i,j]=False
-
-        for i in range(self.nz_max-self.nz_min):
-            for j in range(i,self.nz_max-self.nz_min):
-                # Corners - more than one jump
-                if (i==self.nz_min and j==self.nz_min):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i:i+2,j:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        y_mask[i,j]=False
-                elif (i==self.nz_min and j==self.nz_max-1):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i:i+2,j-1:j+1]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        y_mask[i,j]=False
-                elif (i==self.nz_max-1 and j==self.nz_min):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+1,j:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        y_mask[i,j]=False
-                elif (i==self.nz_max-1 and j==self.nz_max-1):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+1,j-1:j+1]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>1:
-                        y_mask[i,j]=False
-                # Edges
-                elif (i==self.nz_min):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i:i+2,j-1:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        y_mask[i,j]=False
-                elif (i==self.nz_max-1):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+1,j-1:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        y_mask[i,j]=False
-                elif (j==self.nz_min):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+2,j:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        y_mask[i,j]=False
-                elif (j==self.nz_max-1):
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+2,j-1:j+1]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>2:
-                        y_mask[i,j]=False
-                # Bulk
+                    jmin=j-1
+                if j==size-1:
+                    jmax=size-1
+                    jump_max=jump_max-1
                 else:
-                    num_jumps=np.sum(np.abs(self.Y_ij[i-1:i+2,j-1:j+2]-self.Y_ij[i,j])>max_shift)
-                    if num_jumps>3:
-                        y_mask[i,j]=False
+                    jmax=j+2
+                x_jumps=0
+                y_jumps=0
+                for ia in range(imin,imax):
+                    for ja in range(jmin,jmax):
+                        if np.abs(self.X_ij[ia,ja]-self.X_ij[i,j])>float(max_shift):
+                            x_jumps+=1
+                        if np.abs(self.Y_ij[ia,ja]-self.Y_ij[i,j])>float(max_shift):
+                            y_jumps+=1
+                if x_jumps>jump_max:
+                    x_mask[i,j]=False
+                if y_jumps>jump_max:
+                    y_mask[i,j]=False
 
         mask=x_mask*y_mask
         for i in range (0, self.nz_max-self.nz_min-1):
@@ -472,7 +428,42 @@ class imstack(object):
 
         return mask
 
+    def get_outliers_PF(self,order,zscore):
+        """
+        Finds outliers by creating a 2D polynomial fit to the data and then
+        calculating zscores (# of SD away from expected value), throws out high zscores
+        
+        Inputs:
+            order:  int  highest power in fit polynomial
+            zscore: int or float    threshhold for z-scores of shifts
+        """
+        x_mask = np.ones_like(self.X_ij,dtype=bool)
+        y_mask = np.ones_like(self.Y_ij,dtype=bool)
+        p_init = models.Polynomial2D(degree=order)
+        fit_p = fitting.LevMarLSQFitter()
+        y, x = np.mgrid[:len(self.X_ij), :len(self.X_ij)]
 
+        px = fit_p(p_init, x, y, self.X_ij)
+        py = fit_p(p_init, x, y, self.Y_ij)
+
+        residualx=self.X_ij-px(x,y)
+        residualy=self.Y_ij-py(x,y)
+        meanx=np.mean(np.ravel(residualx))
+        meany=np.mean(np.ravel(residualy))
+        stdx=np.std(np.ravel(residualx))
+        stdy=np.std(np.ravel(residualy))
+
+        for i in range(self.nz_max-self.nz_min):
+            for j in range(i,self.nz_max-self.nz_min):
+                if(np.abs((residualx[i,j]-meanx)/stdx) > zscore):
+                    x_mask[i,j]= False
+                if(np.abs((residualy[i,j]-meany)/stdy) > zscore):
+                    y_mask[i,j]= False
+        mask=x_mask*y_mask
+        for i in range (0, self.nz_max-self.nz_min-1):
+            for j in range(i+1, self.nz_max-self.nz_min):
+                mask[j,i] = mask[i,j]
+        return mask
     ############ Methods for reconstructing average image ############
 
     def get_imshifts(self):
@@ -492,8 +483,7 @@ class imstack(object):
             self.bad_images = undetermined_shift_indices
         return
 
-
-    def get_averaged_image(self, get_shifts=True):
+    def get_averaged_image(self, get_shifts=True,crop=True):
         """
         Calculates average image by shifting each image by previously calculated
         self.shifts_x/y.
@@ -508,20 +498,41 @@ class imstack(object):
         self.stack_registered=np.zeros((self.nx,self.ny,len(good_image_indices)))
         for i in range(len(good_image_indices)):
             self.stack_registered[:,:,i]=generateShiftedImage(self.imstack[:,:,good_image_indices[i]],self.shifts_x[good_image_indices[i]],self.shifts_y[good_image_indices[i]])
-        self.average_image = np.sum(self.stack_registered,axis=2)/float(len(good_image_indices))
+        if crop:
+            if self.X_ij.min()>=0:
+                if self.Y_ij.min()>=0:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
+                elif self.Y_ij.max()<=0:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
+                else:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
+            elif self.X_ij.max()<=0:
+                if self.Y_ij.min()>=0:
+                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
+                elif self.Y_ij.max()<=0:
+                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
+                else:
+                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
+            else:
+                if self.Y_ij.min()>=0:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
+                elif self.Y_ij.max()<=0:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
+                else:
+                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
+        else:
+            self.average_image = np.sum(self.stack_registered,axis=2)/float(len(good_image_indices))
         return
 
-
-########################  Display methods #########################
+    ########################  Display methods #########################
 
     def show(self):
         """
         Show average image and its FFT.
         """
-        display.show(self)
-        return
+        return display.show(self)
 
-    def show_Rij(self,Xmax=False,Ymax=False, mask=True):
+    def show_Rij(self,Xmax=False,Ymax=False, mask=True,normalization=False):
         """
         Display Rij matrix.
 
@@ -530,8 +541,8 @@ class imstack(object):
             Ymax    float   Scales Yij colormap between -Ymax and +Ymax
             mask    bool    If true, overlays mask of bad data points.
         """
-        display.show_Rij(self,Xmax=Xmax,Ymax=Ymax,mask=True)
-        return
+        
+        return display.show_Rij(self,Xmax=Xmax,Ymax=Ymax,mask=mask,normalization=normalization)
 
     def show_Fourier_mask(self, image_index=0):
         """
@@ -541,8 +552,8 @@ class imstack(object):
         Inputs:
             image_index     int     FFT to display
         """
-        display.show_Fourier_mask(self,image_index=image_index)
-        return
+        
+        return display.show_Fourier_mask(self,image_index=image_index)
 
     def show_report(self):
         """
@@ -552,7 +563,7 @@ class imstack(object):
         display.show_report(self)
         return
 
-####################### Saving methods ######################
+    ####################### Saving methods ######################
 
     def save(self, fout):
         """
@@ -578,7 +589,7 @@ class imstack(object):
         save.save_report(self,fout=fout)
         return
 
-#################### END IMSTACK OBJECT ####################
+    #################### END IMSTACK OBJECT ####################
 
 
 
