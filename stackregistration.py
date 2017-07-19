@@ -81,6 +81,8 @@ class imstack(object):
                                     Heuristically n=4 works well, but will vary with data.
             mask    str             Either "bandpass", "lowpass", or "none".
         """
+        self.fourier_mask_type=mask
+        self.fourier_upper_frequency=n
         nx,ny = float(self.nx),float(self.ny)
         if mask=="bandpass":
             self.mask_fourierspace = np.fft.fftshift((self.kr<ny/n/2)*(np.sin(2*n*np.pi*self.kr/ny)*np.sin(2*n*np.pi*self.kr/ny)))
@@ -142,7 +144,8 @@ class imstack(object):
         else:
             print("'correlationType' must be 'cc', 'mc', or 'pc'.")
             return
-
+        self.correlation_type=correlationType
+        self.find_maxima_method=findMaxima
         # Define maximum finder function call
         if findMaxima=="pixel":
             findMaxima = self.getSingleShift_pixel
@@ -153,7 +156,7 @@ class imstack(object):
         else:
             print("'findMaxima' must be 'pixel', 'gf', or 'com'.")
             return
-
+        
         # Calculate all image shifts
         for i in range (0, self.nz-1):
             for j in range(i+1, self.nz):
@@ -464,6 +467,7 @@ class imstack(object):
             for j in range(i+1, self.nz_max-self.nz_min):
                 mask[j,i] = mask[i,j]
         return mask
+    
     ############ Methods for reconstructing average image ############
 
     def get_imshifts(self):
@@ -498,39 +502,41 @@ class imstack(object):
         self.stack_registered=np.zeros((self.nx,self.ny,len(good_image_indices)))
         for i in range(len(good_image_indices)):
             self.stack_registered[:,:,i]=generateShiftedImage(self.imstack[:,:,good_image_indices[i]],self.shifts_x[good_image_indices[i]],self.shifts_y[good_image_indices[i]])
-        if crop:
-            if self.X_ij.min()>=0:
-                if self.Y_ij.min()>=0:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
-                elif self.Y_ij.max()<=0:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
-                else:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():,self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
-            elif self.X_ij.max()<=0:
-                if self.Y_ij.min()>=0:
-                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
-                elif self.Y_ij.max()<=0:
-                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
-                else:
-                    self.average_image = np.sum(self.stack_registered[:self.X_ij.min(),self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
-            else:
-                if self.Y_ij.min()>=0:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),self.Y_ij.max():,:],axis=2)/float(len(good_image_indices))
-                elif self.Y_ij.max()<=0:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),:self.Y_ij.min(),:],axis=2)/float(len(good_image_indices))
-                else:
-                    self.average_image = np.sum(self.stack_registered[self.X_ij.max():self.X_ij.min(),self.Y_ij.min():self.Y_ij.max(),:],axis=2)/float(len(good_image_indices))
-        else:
-            self.average_image = np.sum(self.stack_registered,axis=2)/float(len(good_image_indices))
+        self.average_image = np.sum(self.stack_registered,axis=2)/float(len(good_image_indices))   
         return
 
+    def crop_image(self):
+        if self.shifts_x.min()>=0:
+            if self.shifts_y.min()>=0:
+                self.cropped_image = self.average_image[self.shifts_x.max():,self.shifts_y.max():,:]
+            elif self.shifts_y.max()<=0:
+                self.cropped_image = self.average_image[self.shifts_x.max():,:self.shifts_y.min(),:]
+            else:
+                self.cropped_image = self.average_image[self.shifts_x.max():,self.shifts_y.min():self.shifts_y.max(),:]
+        elif self.shifts_x.max()<=0:
+            if self.shifts_y.min()>=0:
+                self.cropped_image = self.average_image[:self.shifts_x.min(),self.shifts_y.max():,:]
+            elif self.shifts_y.max()<=0:
+                self.cropped_image = self.average_image[:self.shifts_x.min(),:self.shifts_y.min(),:]
+            else:
+                self.cropped_image = self.average_image[:self.shifts_x.min(),self.shifts_y.min():self.shifts_y.max(),:]
+        else:
+            if self.shifts_y.min()>=0:
+                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),self.shifts_y.max():,:]
+            elif self.shifts_y.max()<=0:
+                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),:self.shifts_y.min(),:]
+            else:
+                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),self.shifts_y.max():self.shifts_y.min(),:]
+        
     ########################  Display methods #########################
 
-    def show(self):
+    def show(self,crop=False):
         """
         Show average image and its FFT.
         """
-        return display.show(self)
+        if crop:
+            self.crop_image()
+        return display.show(self,crop=crop)
 
     def show_Rij(self,Xmax=False,Ymax=False, mask=True,normalization=False):
         """
@@ -565,7 +571,7 @@ class imstack(object):
 
     ####################### Saving methods ######################
 
-    def save(self, fout):
+    def save(self,fout,crop=False):
         """
         Saves imstack.average_image to fout.
         Saves as a 32-bit tif using tifffile package.
@@ -574,7 +580,9 @@ class imstack(object):
             fout    str     path to output filename.
                             If fout does not end in .tif, it is appended
         """
-        save.save(self,fout=fout)
+        if crop:
+            self.crop_image()
+        save.save(self,fout=fout,crop=crop)
         return
 
     def save_report(self,fout):

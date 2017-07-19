@@ -8,12 +8,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 
-def show(imstack):
+def show(imstack,crop=False):
     """
     Show average image and its FFT.
     """
     fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
-    ax1.matshow(imstack.average_image,cmap='gray')
+    if crop:
+        ax1.matshow(imstack.cropped_image,cmap='gray')
+    else:
+        ax1.matshow(imstack.average_image,cmap='gray')
     ax2.matshow(np.log(np.abs(np.fft.fftshift(np.fft.fft2(imstack.average_image))))[:int(imstack.nx),:imstack.ny],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fft2(imstack.average_image))).ravel()))
     ax1.axis('off')
     ax2.axis('off')
