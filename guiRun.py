@@ -1,12 +1,7 @@
 #!/usr/bin/env python
 
 """
-- Mask look at it in popup window with 1 cross correlation
 - Make user guide better
-- Labels being off - Make all labels same size and stuff
-- If you zoom in average image, shows Fourier mask just for that part of image
-- See if we can make things better compared to window size
-- Make sure everything is idiot proof so you don't get errors
 """
 
 # Import global libraries
@@ -14,6 +9,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg') 
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from time import time
 from PIL import Image
@@ -261,9 +257,10 @@ def forwardButtPress(frame,stack,txt,lng=0):
     fig,ax=plt.subplots(figsize=(4,4),dpi=100)
     ax.matshow(stack[:,:,int(slice)],cmap='gray')
     ax.axis('off')
-    ax.set_title(txt+str(slice))
+    ax.set_title(txt+str(slice),y=1)
     if lng==2:
-        ax.set_title(txt)
+        ax.set_title(txt,y=1)
+    plt.subplots_adjust(left=0,right=1,bottom=0.01,top=0.93,wspace=0.03,hspace=0.01)
     can=FigureCanvasTkAgg(fig,frame)
     can.get_tk_widget().config(highlightthickness=0)
     can.get_tk_widget().grid(column=0,row=0)
@@ -288,9 +285,10 @@ def backButtPress(frame,stack,txt,lng=0):
     fig,ax=plt.subplots(figsize=(4,4),dpi=100)
     ax.matshow(stack[:,:,slice],cmap='gray')
     ax.axis('off')
-    ax.set_title(txt+str(slice))
+    ax.set_title(txt+str(slice),y=1)
     if lng==2:
-        ax.set_title(txt)
+        ax.set_title(txt,y=1)
+    plt.subplots_adjust(left=0,right=1,bottom=0.01,top=0.93,wspace=0.03,hspace=0.01)
     can=FigureCanvasTkAgg(fig,frame)
     can.get_tk_widget().config(highlightthickness=0)
     can.get_tk_widget().grid(column=0,row=0)
@@ -361,28 +359,50 @@ def loadData(fileType):
     t0=time()
     global s
     if fileType=='tif':
-        filepath=os.path.dirname(askopenfilename())
-        files=[]
-        if(fileType=='tif'):
-            for filename in listdir(filepath):
-                files.append(filepath+"/"+filename)
-        im=np.array(Image.open(files[0]))
-        fov=im.shape[0]
-        stack=np.empty((fov,fov,len(files)))
-        for i in range(len(files)):
-            im=np.array(Image.open(files[i]))
-            im=im/float(2**16)
-            stack[:,:,i]=im	
+        try:
+            file=askopenfilename()
+            if file=='':
+                return
+            filepath=os.path.dirname(file)
+            files=[]
+            if(fileType=='tif'):
+                for filename in listdir(filepath):
+                    files.append(filepath+"/"+filename)
+            im=np.array(Image.open(files[0]))
+            fov=im.shape[0]
+            stack=np.empty((fov,fov,len(files)))
+            for i in range(len(files)):
+                im=np.array(Image.open(files[i]))
+                im=im/float(2**16)
+                stack[:,:,i]=im	
+        except:
+            tkMessageBox.showwarning("Data Type Error","Please make sure you have selected the correct folder containing only .tif files")
+            return
     elif fileType=='ser':
-        stack=serReader.serReader(askopenfilename())
+        
+        try:
+            file=askopenfilename()
+            if file=='':
+                return
+            stack=serReader.serReader(file)
+            s =stackregister.imstack(stack[:,:,:])	 
+        except:
+            tkMessageBox.showwarning('Data Type Error',"Please make sure you have selected a .ser file to use this option.")
+            return
     else:
-        stack=np.rollaxis(imread(askopenfilename()),0,3)
-        stack=stack[:,:,:]/float(2**16)
+        try:
+            file=askopenfilename()
+            if file=='':
+                return
+            stack=np.rollaxis(imread(file),0,3)
+            stack=stack[:,:,:]/float(2**16)
+        except:
+            tkMessageBox.showwarning('Data Type Error','Please make sure you have selected a .tif stack to use this option.')
+            return
         
     # Instantiate imstack object
     s =stackregister.imstack(stack[:,:,:])	 
-    global correlationType,findMaxima,loaded,fouriern,fourierMaskType,canvas
-    #canvas=None
+    global correlationType,findMaxima,loaded,fouriern,fourierMaskType
     s.getFFTs()
     s.makeFourierMask(mask=fourierMaskType,n=fouriern)
     s.findImageShifts(correlationType=correlationType,findMaxima=findMaxima,verbose=False)
@@ -396,15 +416,16 @@ def loadData(fileType):
          
 #Saves the shift matrixes to a text file
 def saveTxt():
-    fileName=tkFileDialog.asksaveasfilename(defaultextension='.txt')
-    with file(fileName, 'w') as outfile:
-        outfile.write('X shifts\n')
-        np.savetxt(outfile, s.X_ij, fmt='%-7.2f')
-        outfile.write('\nY Shifts\n')
-        np.savetxt(outfile, s.Y_ij, fmt='%-7.2f')
     global loaded
     if loaded == False:
         tkMessageBox.showwarning("Load Data","Please load images in to analze first")
+    else:
+        fileName=tkFileDialog.asksaveasfilename(defaultextension='.txt')
+        with file(fileName, 'w') as outfile:
+            outfile.write('X shifts\n')
+            np.savetxt(outfile, s.X_ij, fmt='%-7.2f')
+            outfile.write('\nY Shifts\n')
+            np.savetxt(outfile, s.Y_ij, fmt='%-7.2f')   
 
 #This redoes the necessary parts if you change the outlier method    
 def outRedo(bool,coef,z,shift):
@@ -572,6 +593,43 @@ def nzPopup():
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analze first")
 
+#Updatesthe FFT an cross correlation seen in the fourier popup when you change something
+def fourierPopupDisplay(radio, n, frm):
+    if n.isdigit():
+        n=int(n)
+        fft1=s.fftstack[:,:,0]
+        fft2=s.fftstack[:,:,int(s.nz/2)]
+        nx,ny = float(s.nx),float(s.ny)
+        if radio=="bandpass":
+            mask = np.fft.fftshift((s.kr<float(s.ny)/n/2)*(np.sin(2*n*np.pi*s.kr/float(s.ny))*np.sin(2*n*np.pi*s.kr/float(s.ny))))
+        elif radio=="lowpass":
+            mask = np.fft.fftshift((s.kr<float(s.ny)/n/2)*(np.cos(n*np.pi*s.kr/float(s.ny))*np.cos(n*np.pi*s.kr/float(s.ny))))
+        elif radio=="none":
+            mask = np.ones_like(s.kr)
+        cc = np.abs(np.fft.fftshift(s.fftw.ifft(mask * fft2 * np.conj(fft1))))
+        gs=gridspec.GridSpec(3,2)
+        gs.update(wspace=0.05,hspace=0.05)
+        fig=plt.figure(figsize=(3,4.6))
+        fig.subplots_adjust(wspace=0,hspace=0,left=0.01,right=0.99,top=0.99,bottom=0.01)
+        ax1=plt.subplot(gs[0,0])
+        ax2=plt.subplot(gs[0,1])
+        ax=plt.subplot(gs[1:3,0:2])
+        tempdetemp=np.log(np.abs(np.fft.fftshift(fft1)))
+        ax1.matshow(tempdetemp[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(tempdetemp.ravel()))
+        ax1.matshow(np.fft.fftshift(mask)[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='hot',alpha=0.3)
+        ax2.matshow(np.log(np.abs(np.fft.fftshift(fft1*np.where(mask,mask,0.001))))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(fft1)))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)].ravel()))
+        ax1.axis('off')
+        ax2.axis('off')
+        ax.matshow(cc,cmap="viridis",vmin=np.mean(np.log(np.abs(cc))).ravel())
+        ax.axis('off')
+        fourierCnvs=FigureCanvasTkAgg(fig, frm)
+        fourierCnvs.show()
+        fourierCnvs.get_tk_widget().grid(row=0,column=0)
+
+#This was necessary for some reason, its really stupid
+def fourierTraceUpdate(event, radio, n, frm):
+    fourierPopupDisplay(radio.get(), n.get(), frm)
+
 #This makes the popup to change if there is a fourier transform mask or not
 def fourierPopup():
     global loaded
@@ -582,95 +640,108 @@ def fourierPopup():
         fourierpop.title("Edit Fourier Transform Mark")
         fourierNLabel = tk.Label(fourierpop,text="N Value:",font=MEDIUMFONT)
         fourierNLabel.grid(column=0,row=0)
+
         fourierNEntry=tk.Entry(fourierpop,width=2,font=MEDIUMFONT)
-        fourierNEntry.grid(column=1,row=0)
         fourierNEntry.insert(0,fouriern)
+        fourierNEntry.grid(column=1,row=0)
         
         radioText = tk.StringVar(fourierpop)
         radioText.set(fourierMaskType)
         fourierRadioFrame=tk.LabelFrame(fourierpop,text="Select Mask Type", relief="sunken",font=MEDIUMFONT)
-        fourierNoneRadio=tk.Radiobutton(fourierRadioFrame,text="None",variable=radioText,value="none",font=SMALLFONT)
-        fourierLowRadio=tk.Radiobutton(fourierRadioFrame,text="Lowpass",variable=radioText,value="lowpass",font=SMALLFONT)
-        fourierBandRadio=tk.Radiobutton(fourierRadioFrame,text="Bandpass",variable=radioText,value="bandpass",font=SMALLFONT)
+        fourierNoneRadio=tk.Radiobutton(fourierRadioFrame,text="None",variable=radioText,value="none",font=SMALLFONT,command=lambda: fourierPopupDisplay("none",fourierNEntry.get(),fourierDisplayFrame))
+        fourierLowRadio=tk.Radiobutton(fourierRadioFrame,text="Lowpass",variable=radioText,value="lowpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("lowpass",fourierNEntry.get(),fourierDisplayFrame))
+        fourierBandRadio=tk.Radiobutton(fourierRadioFrame,text="Bandpass",variable=radioText,value="bandpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("bandpass",fourierNEntry.get(),fourierDisplayFrame))
+        
         fourierRadioFrame.grid(column=0,columnspan=2,row=1)
         fourierNoneRadio.grid(column=0,row=0)
-        fourierLowRadio.grid(column=1,row=0)
-        fourierBandRadio.grid(column=2,row=0)
+        fourierLowRadio.grid(column=0,row=1)
+        fourierBandRadio.grid(column=0,row=2)
         if radioText.get()=="none":
             fourierNoneRadio.select()
         elif radioText.get()=="lowpass":
             fourierLowRadio.select()
         else:
             fourierBandRadio.select()
-        fourierSaveButton=tk.Button(fourierpop,text="Save",font=MEDIUMFONT,command=lambda: fourierRedo(fourierNEntry.get(),radioText.get()))
-        fourierSaveButton.grid(column=0,row=2)
-        fourierCancelButton=tk.Button(fourierpop,text="Cancel",font=MEDIUMFONT,command=fourierpop.destroy)
-        fourierCancelButton.grid(column=1,row=2)
+        fourierDisplayFrame=tk.Frame(fourierpop)
+        fourierDisplayFrame.grid(column=3,row=0,rowspan=3)
+        fourierPopupDisplay(fourierMaskType,fourierNEntry.get(),fourierDisplayFrame)
+        fourierNEntry.bind("<Return>",lambda event, radio=radioText, n=fourierNEntry, frm=fourierDisplayFrame: fourierTraceUpdate(event,radio,n,frm))
+        fourierNEntry.bind("<FocusOut>",lambda event, radio=radioText, n=fourierNEntry, frm=fourierDisplayFrame: fourierTraceUpdate(event,radio,n,frm))
+        fourierButtonsFrame=tk.Frame(fourierpop)
+        fourierButtonsFrame.grid(column=0,row=2)
+        fourierSaveButton=tk.Button(fourierButtonsFrame,text="Save",font=MEDIUMFONT,command=lambda: fourierRedo(fourierNEntry.get(),radioText.get()))
+        fourierSaveButton.grid(column=0,row=0)
+        fourierCancelButton=tk.Button(fourierButtonsFrame,text="Cancel",font=MEDIUMFONT,command=fourierpop.destroy)
+        fourierCancelButton.grid(column=1,row=0)
         fourierpop.mainloop()
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
 
 #This one makes a popup to change the way it calculates the shifts between the images (yay!)
 def shiftPopup():
-    global shiftpop, correlationType,findMaxima,gaussiannumpeaks,sigmaguess,windowradius,numiter,minwindowfrac
-    shiftpop=tk.Tk()
-    shiftpop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
-    shiftpop.title("Edit Image Shift Calculation")    
-    typeFrame=tk.LabelFrame(shiftpop,text="Select Correleation Type",relief="ridge",font=MEDIUMFONT)
-    typeRadio=tk.StringVar(shiftpop)
-    typeRadio.set(correlationType)
-    typeFrame.grid(row=0,column=0,columnspan=2)
-    shiftCrossRadio=tk.Radiobutton(typeFrame,text="Cross Correleation",variable=typeRadio,value="cc",font=SMALLFONT)
-    shiftMutualRadio=tk.Radiobutton(typeFrame,text="Mutual Correlation",variable=typeRadio,value="mc",font=SMALLFONT)
-    shiftPhaseRadio=tk.Radiobutton(typeFrame,text="Phase Correleation",variable=typeRadio,value="pc",font=SMALLFONT)
-    shiftCrossRadio.grid(column=0,row=0)
-    shiftMutualRadio.grid(column=1,row=0)
-    shiftPhaseRadio.grid(column=0,row=1,columnspan=2)
-    if correlationType=="cc":
-        shiftCrossRadio.select()
-    elif correlationType=="mc":
-        shiftMutualRadio.select()
+    global loaded
+    if loaded:
+        global shiftpop, correlationType,findMaxima,gaussiannumpeaks,sigmaguess,windowradius,numiter,minwindowfrac
+        shiftpop=tk.Tk()
+        shiftpop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
+        shiftpop.title("Edit Image Shift Calculation")    
+        typeFrame=tk.LabelFrame(shiftpop,text="Select Correleation Type",relief="ridge",font=MEDIUMFONT)
+        typeRadio=tk.StringVar(shiftpop)
+        typeRadio.set(correlationType)
+        typeFrame.grid(row=0,column=0,columnspan=2)
+        shiftCrossRadio=tk.Radiobutton(typeFrame,text="Cross Correleation",variable=typeRadio,value="cc",font=SMALLFONT)
+        shiftMutualRadio=tk.Radiobutton(typeFrame,text="Mutual Correlation",variable=typeRadio,value="mc",font=SMALLFONT)
+        shiftPhaseRadio=tk.Radiobutton(typeFrame,text="Phase Correleation",variable=typeRadio,value="pc",font=SMALLFONT)
+        shiftCrossRadio.grid(column=0,row=0)
+        shiftMutualRadio.grid(column=1,row=0)
+        shiftPhaseRadio.grid(column=0,row=1,columnspan=2)
+        if correlationType=="cc":
+            shiftCrossRadio.select()
+        elif correlationType=="mc":
+            shiftMutualRadio.select()
+        else:
+            shiftPhaseRadio.select()
+
+        maximaFrame=tk.LabelFrame(shiftpop,text="Select Method for Finding Maxima",relief="ridge",font=MEDIUMFONT)
+        maximaFrame.grid(row=1,column=0,columnspan=2)
+        maximaRadio=tk.StringVar(shiftpop)
+        maximaRadio.set(findMaxima)
+        maximaPixelRadio=tk.Radiobutton(maximaFrame,text="Pixel",variable=maximaRadio,value="pixel",font=SMALLFONT,command=lambda: otherRadioUpdate("pixel",numPeakEntry,sigmaEntry,windowRadEntry))
+        maximaGfRadio=tk.Radiobutton(maximaFrame,text="Subpixel by Gaussian Fit",variable=maximaRadio,value="gf",font=SMALLFONT,command=lambda: otherRadioUpdate("gf",numPeakEntry,sigmaEntry,windowRadEntry))
+        maximaPixelRadio.grid(column=0,row=0)
+        maximaGfRadio.grid(column=1,row=0)
+        if findMaxima=="pixel":
+            maximaPixelRadio.select()
+        elif findMaxima=="gf":
+            maximaGfRadio.select()
+        else:
+            maximaComRadio.select()    
+
+        gfSettingFrame=tk.LabelFrame(shiftpop,text="Gaussian Fit Settings",relief="sunken",font=MEDIUMFONT)
+        gfSettingFrame.grid(column=0,row=2,columnspan=2)
+        numPeakLabel=tk.Label(gfSettingFrame,text="Number of Peaks:",font=SMALLFONT)
+        numPeakEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
+        numPeakEntry.insert(0,str(gaussiannumpeaks))
+        sigmaLabel=tk.Label(gfSettingFrame,text="Sigma Guess:",font=SMALLFONT)
+        sigmaEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
+        sigmaEntry.insert(0,str(sigmaguess))
+        windowRadLabel=tk.Label(gfSettingFrame,text="Window Radius:",font=SMALLFONT)
+        windowRadEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
+        windowRadEntry.insert(0,str(windowradius))
+        numPeakLabel.grid(column=0,row=0)
+        numPeakEntry.grid(column=1,row=0)
+        sigmaLabel.grid(column=0,row=1)
+        sigmaEntry.grid(column=1,row=1)
+        windowRadLabel.grid(column=0,row=2)
+        windowRadEntry.grid(column=1,row=2)
+        shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftUpdate(typeRadio.get(),maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
+        shiftSaveButton.grid(column=0,row=3)
+        shiftCancelButton=tk.Button(shiftpop,text="Cancel",font=MEDIUMFONT,command=shiftpop.destroy)
+        shiftCancelButton.grid(column=1,row=3)
+        otherRadioUpdate(maximaRadio.get(),numPeakEntry,sigmaEntry,windowRadEntry)
+        shiftpop.mainloop()
     else:
-        shiftPhaseRadio.select()
-    
-    maximaFrame=tk.LabelFrame(shiftpop,text="Select Method for Finding Maxima",relief="ridge",font=MEDIUMFONT)
-    maximaFrame.grid(row=1,column=0,columnspan=2)
-    maximaRadio=tk.StringVar(shiftpop)
-    maximaRadio.set(findMaxima)
-    maximaPixelRadio=tk.Radiobutton(maximaFrame,text="Pixel",variable=maximaRadio,value="pixel",font=SMALLFONT,command=lambda: otherRadioUpdate("pixel",numPeakEntry,sigmaEntry,windowRadEntry))
-    maximaGfRadio=tk.Radiobutton(maximaFrame,text="Subpixel by Gaussian Fit",variable=maximaRadio,value="gf",font=SMALLFONT,command=lambda: otherRadioUpdate("gf",numPeakEntry,sigmaEntry,windowRadEntry))
-    maximaPixelRadio.grid(column=0,row=0)
-    maximaGfRadio.grid(column=1,row=0)
-    if findMaxima=="pixel":
-        maximaPixelRadio.select()
-    elif findMaxima=="gf":
-        maximaGfRadio.select()
-    else:
-        maximaComRadio.select()    
-    
-    gfSettingFrame=tk.LabelFrame(shiftpop,text="Gaussian Fit Settings",relief="sunken",font=MEDIUMFONT)
-    gfSettingFrame.grid(column=0,row=2,columnspan=2)
-    numPeakLabel=tk.Label(gfSettingFrame,text="Number of Peaks:",font=SMALLFONT)
-    numPeakEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
-    numPeakEntry.insert(0,str(gaussiannumpeaks))
-    sigmaLabel=tk.Label(gfSettingFrame,text="Sigma Guess:",font=SMALLFONT)
-    sigmaEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
-    sigmaEntry.insert(0,str(sigmaguess))
-    windowRadLabel=tk.Label(gfSettingFrame,text="Window Radius:",font=SMALLFONT)
-    windowRadEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
-    windowRadEntry.insert(0,str(windowradius))
-    numPeakLabel.grid(column=0,row=0)
-    numPeakEntry.grid(column=1,row=0)
-    sigmaLabel.grid(column=0,row=1)
-    sigmaEntry.grid(column=1,row=1)
-    windowRadLabel.grid(column=0,row=2)
-    windowRadEntry.grid(column=1,row=2)
-    shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftUpdate(typeRadio.get(),maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
-    shiftSaveButton.grid(column=0,row=3)
-    shiftCancelButton=tk.Button(shiftpop,text="Cancel",font=MEDIUMFONT,command=shiftpop.destroy)
-    shiftCancelButton.grid(column=1,row=3)
-    otherRadioUpdate(maximaRadio.get(),numPeakEntry,sigmaEntry,windowRadEntry)
-    shiftpop.mainloop()
+        tkMessageBox.showwarning("Load Data","Please load images in to analyze first.") 
     
 #This makes the great about popup
 def aboutPopup():
@@ -684,7 +755,7 @@ def aboutPopup():
     t2.grid(column=0,row=1)
     t3=tk.Label(aboutPop,text="",font=SMALLFONT)
     t3.grid(column=0,row=2)
-    t4=tk.Label(aboutPop,text="Emily Waite, Benjamin Savitzky, Ismail El Baggari, Lena F. Kourkoutis",font=SMALLFONT)
+    t4=tk.Label(aboutPop,text=" Benjamin Savitzky, Emily Waite, Ismail El Baggari, Lena F. Kourkoutis",font=SMALLFONT)
     t4.grid(column=0,row=3)
     t5=tk.Label(aboutPop,text="Department of Applied and Engineering Physics, Cornell University",font=SMALLFONT)
     t5.grid(column=0,row=4)
@@ -698,6 +769,26 @@ def openHelp():
         opener ="open" if sys.platform == "darwin" else "xdg-open"
         subprocess.call([opener, filename]) 
 
+def saveReport():
+    global loaded
+    if loaded:
+        file=tkFileDialog.asksaveasfilename(defaultextension='.pdf')
+        if file=='':
+            return
+        s.save_report(file)
+    else:
+        tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
+
+def saveImage():
+    global loaded
+    if loaded:
+        file=tkFileDialog.asksaveasfilename(defaultextension='.tif')
+        if file=='':
+            return
+        s.save(file)
+    else:
+        tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
+        
 #Makes the basic window and the menu bars you need
 def rootSetup(root):
     root.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
@@ -710,12 +801,9 @@ def rootSetup(root):
     filemenu.add_command(label="Import .tif stack",command=lambda:loadData(fileType='tifstack'))
     filemenu.add_command(label="Import .ser File",command=lambda: loadData(fileType='ser')) 
     filemenu.add_command(label="Import Extracted .tif files", command=lambda: loadData(fileType='tif'))
-    filemenu.add_command(label="Save Image")
-    filemenu.add_command(label="Generate Report")
-    filemenu.add_command(label="Export Shift Data")
-    filemenu.entryconfig(3,command=lambda: s.save(tkFileDialog.asksaveasfilename(defaultextension='.tif')))
-    filemenu.entryconfig(4, command=lambda: s.save_report(tkFileDialog.asksaveasfilename(defaultextension='.pdf')))
-    filemenu.entryconfig(5,command=saveTxt)
+    filemenu.add_command(label="Save Image",command=saveImage)
+    filemenu.add_command(label="Generate Report",command=saveReport )
+    filemenu.add_command(label="Export Shift Data",command=saveTxt)
     editmenu=tk.Menu(menubar, tearoff=0)
     editmenu.add_command(label="Change nz range",command=nzPopup)
     editmenu.add_command(label="Change Outlier Method", command=outlierPopup)

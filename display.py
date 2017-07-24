@@ -17,13 +17,13 @@ def show(imstack,crop=False):
         ax1.matshow(imstack.cropped_image,cmap='gray')
     else:
         ax1.matshow(imstack.average_image,cmap='gray')
-    ax2.matshow(np.log(np.abs(np.fft.fftshift(np.fft.fft2(imstack.average_image))))[:int(imstack.nx),:imstack.ny],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fft2(imstack.average_image))).ravel()))
+    ax2.matshow(np.log(np.abs(np.fft.fftshift(np.fft.fft2(imstack.average_image))))[:imstack.nx,:imstack.ny],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fft2(imstack.average_image))).ravel()))
     ax1.axis('off')
     ax2.axis('off')
-    ax1.set_title("Averaged Image")
-    ax2.set_title("Fourier Transform")
+    ax1.set_title("Averaged Image",y=1)
+    ax2.set_title("Fourier Transform",y=1)
     fig.tight_layout()
-    plt.subplots_adjust(wspace=0.2,hspace=0.05)
+    plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.89,wspace=0.03,hspace=0.01)
     return fig
 
 def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=False):
@@ -70,8 +70,6 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=False):
         # Overlay mask
         ax1.matshow(full_mask,cmap=cmap_mask)
         ax2.matshow(full_mask,cmap=cmap_mask)
-        ax1.set_title("Masked Shift Mastrix, X",y=1.1)
-        ax2.set_title("Masked Shift Matrix, Y",y=1.1)
     else:
         fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
         if Xmax:
@@ -82,8 +80,8 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=False):
             ax2.matshow(imstack.Y_ij,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
         else:
             ax2.matshow(imstack.Y_ij,cmap=r'RdBu')
-        ax1.set_title("Shift Matrix in X Direction",y=1.1)
-        ax2.set_title("Shift Matrix in Y Direction",y=1.1)
+    ax1.set_title("Shift Matrix (X)",y=1.09)
+    ax2.set_title("Shift Matrix (Y)",y=1.09)
     ax1.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     ax2.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     ax1.xaxis.set_ticks(np.arange(0, imstack.nz, 5))
@@ -91,6 +89,7 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=False):
     ax1.yaxis.set_ticks(np.arange(0, imstack.nz, 5))
     ax2.yaxis.set_ticks(np.arange(0, imstack.nz, 5))
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.03)
     return fig
 
 def show_Fourier_mask(imstack, image_index=0):
@@ -102,15 +101,16 @@ def show_Fourier_mask(imstack, image_index=0):
         image_index     int     FFT to display
     """
     fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),sharex=True,sharey=True)
-    ax1.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,image_index]))),
-                cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,image_index]))).ravel()))
-    ax1.matshow(np.fft.fftshift(imstack.mask_fourierspace),cmap='hot',alpha=0.3)
-    ax2.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,image_index]*np.where(imstack.mask_fourierspace,imstack.mask_fourierspace,0.001)))),
-                cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,image_index]))).ravel()))
+    ax1.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[0:imstack.nx,0:imstack.ny,image_index])))[0:imstack.nx,0:imstack.ny],
+                cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(imstack.fftstack[0:imstack.nx,0:imstack.ny,image_index]))).ravel()))
+    ax1.matshow(np.fft.fftshift(imstack.mask_fourierspace)[0:imstack.nx,0:imstack.ny],cmap='hot',alpha=0.3)
+    ax2.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[0:imstack.nx,0:imstack.ny,image_index]*np.where(imstack.mask_fourierspace,imstack.mask_fourierspace,0.001))))[0:1024,0:1024],
+                cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(imstack.fftstack[0:imstack.nx,0:imstack.ny,image_index]))).ravel()))
     ax1.axis('off')
     ax2.axis('off')
-    ax1.set_title("FFT with mask overlay")
-    ax2.set_title("Masked FFT")
+    ax1.set_title("FFT with mask overlay",y=1)
+    ax2.set_title("Masked FFT",y=1)
+    plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.89,wspace=0.03,hspace=0.01)
     return fig
 
 def show_report(imstack):
