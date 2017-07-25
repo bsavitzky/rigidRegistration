@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-"""
-- Make user guide better
-"""
-
 # Import global libraries
 import numpy as np
 import matplotlib
@@ -57,6 +53,22 @@ stackUsed=None
 MEDIUMLARGE = ("Verdana",20)
 MEDIUMFONT= ("Verdana",14)
 SMALLFONT=("Verdana",12)
+
+#Just makes the toolbar slightly better for our purpose
+class CustomToolbar(tkagg.NavigationToolbar2TkAgg):
+    def __init__(self,canvas_,parent_):
+        self.toolitems = (
+            ('Home', 'Reset original view', 'home', 'home'),
+            ('Back', 'Back to  previous view', 'back', 'back'),
+            ('Forward', 'Forward to next view', 'forward', 'forward'),
+            (None, None, None, None),
+            ('Pan', 'Pan axes with left mouse, zoom with right', 'move', 'pan'),
+            ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
+            (None, None, None, None),
+            (None, None, None, None),
+            ('Save', 'Save the figure', 'filesave', 'save_figure'),
+            )
+        tkagg.NavigationToolbar2TkAgg.__init__(self,canvas_,parent_)
 
 # This makes the popup and the functions for making a custom mask 
 class CustomMask():
@@ -124,7 +136,6 @@ def loadParams():
         zscore=data.zscore
         shiftMax=data.shiftMax
         polycoeffmax=data.polycoeffmax
-        correlationType=data.correlationType
         findMaxima=data.findMaxima
         fouriern=data.fouriern
         fourierMaskType=data.fourierMaskType
@@ -137,7 +148,6 @@ def loadParams():
         zscore=2.0
         shiftMax=20
         polycoeffmax=3
-        correlationType="cc"
         findMaxima="pixel"
         fouriern = 4
         fourierMaskType="bandpass"
@@ -166,7 +176,7 @@ def showView(root):
         figFrame=tk.Frame(frame)
         figFrame.grid(column=0,row=0,pady=5,padx=5)
         canvas1 = FigureCanvasTkAgg(averageImage, figFrame)
-        tools=tkagg.NavigationToolbar2TkAgg(canvas1, figFrame)
+        tools=CustomToolbar(canvas1, figFrame)
         tools.update()
         canvas1.show()
         canvas1.get_tk_widget().config(highlightthickness=0)
@@ -177,7 +187,7 @@ def showView(root):
         fourFrame=tk.Frame(frame)
         fourFrame.grid(column=1,row=0,pady=5,padx=5)
         canvas4=FigureCanvasTkAgg(fourierMask,fourFrame)
-        tools2=tkagg.NavigationToolbar2TkAgg(canvas4,fourFrame)
+        tools2=CustomToolbar(canvas4,fourFrame)
         tools2.update()
         canvas4.show()
         canvas4.get_tk_widget().config(highlightthickness=0)
@@ -328,7 +338,7 @@ def rijTrueOnMouseDown(event):
         forwardButtPress(imageFrame2,stackUsed,strng,lng=2)
     else:
         forwardButton2.configure(command=lambda:forwardButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
-        backButton2.configure(command=lambda:forwardButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
+        backButton2.configure(command=lambda:backButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
         stackUsed=s.stack_registered
         forwardButtPress(imageFrame2,stackUsed,"Registered Image ")
        
@@ -402,10 +412,10 @@ def loadData(fileType):
         
     # Instantiate imstack object
     s =stackregister.imstack(stack[:,:,:])	 
-    global correlationType,findMaxima,loaded,fouriern,fourierMaskType
+    global findMaxima,loaded,fouriern,fourierMaskType
     s.getFFTs()
     s.makeFourierMask(mask=fourierMaskType,n=fouriern)
-    s.findImageShifts(correlationType=correlationType,findMaxima=findMaxima,verbose=False)
+    s.findImageShifts(correlationType="cc",findMaxima=findMaxima,verbose=False)
     t=time()-t0
     s.set_nz(0,s.nz)
     loaded=True
@@ -444,8 +454,9 @@ def outRedo(bool,coef,z,shift):
     
 #This redoes the necessary parts if you change the nz range
 def nzRedo(minText,maxText,listEntry):
-    s.set_nz(int(minText),int(maxText))
-    s.set_bad_images(map(int,listEntry.split(",")))
+    s.set_nz(int(minText),int(maxText)+1)
+    if listEntry!="":
+        s.set_bad_images(map(int,listEntry.split(",")))
     global nzpop
     nzpop.destroy()
     outliers()
@@ -460,17 +471,17 @@ def fourierRedo(n,type):
     s.findImageShifts(correlationType=correlationType,findMaxima=findMaxima,verbose=False)
     outliers()
     recalc()
+    fourierpop.destroy()
  
 #Updates the method used to find shifts between images and reruns all necessary calculations 
-def shiftUpdate(type,maxima,numPeak,sigma,windowRad):
-    global shiftpop, correlationType, findMaxima, gaussiannumpeaks,sigmaguess,windowradius
-    correlationType=type
+def shiftUpdate(maxima,numPeak,sigma,windowRad):
+    global shiftpop,findMaxima, gaussiannumpeaks,sigmaguess,windowradius
     findMaxima=maxima
     gaussiannumpeaks=int(numPeak)
     sigmaguess=int(sigma)
     windowradius=int(windowRad)
     s.setGaussianFitParams(num_peaks=int(numPeak),sigma_guess=int(sigma),window_radius=int(windowRad))
-    s.findImageShifts(correlationType=type,findMaxima=maxima,verbose=False)
+    s.findImageShifts(correlationType="cc",findMaxima=maxima,verbose=False)
     shiftpop.destroy()
     recalc()
  
@@ -522,7 +533,7 @@ def outlierPopup():
         aroundframe.grid(column=0,row=3,columnspan=2,sticky='W',pady=4)
         
         global polycoeffmax,zscore
-        outCoeLabel=tk.Label(fitframe, text="Coefficent of Polynomial fit:",font=SMALLFONT)
+        outCoeLabel=tk.Label(fitframe, text="Order of Polynomial fit:",font=SMALLFONT)
         outCoeLabel.grid(column=0,row=0)
         outCoeEntry = tk.Entry(fitframe, width=7, font=SMALLFONT)
         outCoeEntry.grid(column=1, row=0)
@@ -579,7 +590,7 @@ def nzPopup():
         nzmaxLabel.grid(column=0, row=1)
         nzmaxEntry = tk.Entry(nzframe, width=7, font=SMALLFONT)
         nzmaxEntry.grid(column=1, row=1)
-        nzmaxEntry.insert(0,str(s.nz_max))
+        nzmaxEntry.insert(0,str(s.nz_max-1))
         nzListLabel = tk.Label(nzframe,text="Bad images:",font=SMALLFONT)
         nzListLabel.grid(column=0,row=2)
         nzListEntry = tk.Entry(nzframe,width=7,font=SMALLFONT)
@@ -681,29 +692,12 @@ def fourierPopup():
 def shiftPopup():
     global loaded
     if loaded:
-        global shiftpop, correlationType,findMaxima,gaussiannumpeaks,sigmaguess,windowradius,numiter,minwindowfrac
+        global shiftpop,findMaxima,gaussiannumpeaks,sigmaguess,windowradius,numiter,minwindowfrac
         shiftpop=tk.Tk()
         shiftpop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
         shiftpop.title("Edit Image Shift Calculation")    
-        typeFrame=tk.LabelFrame(shiftpop,text="Select Correleation Type",relief="ridge",font=MEDIUMFONT)
-        typeRadio=tk.StringVar(shiftpop)
-        typeRadio.set(correlationType)
-        typeFrame.grid(row=0,column=0,columnspan=2)
-        shiftCrossRadio=tk.Radiobutton(typeFrame,text="Cross Correleation",variable=typeRadio,value="cc",font=SMALLFONT)
-        shiftMutualRadio=tk.Radiobutton(typeFrame,text="Mutual Correlation",variable=typeRadio,value="mc",font=SMALLFONT)
-        shiftPhaseRadio=tk.Radiobutton(typeFrame,text="Phase Correleation",variable=typeRadio,value="pc",font=SMALLFONT)
-        shiftCrossRadio.grid(column=0,row=0)
-        shiftMutualRadio.grid(column=1,row=0)
-        shiftPhaseRadio.grid(column=0,row=1,columnspan=2)
-        if correlationType=="cc":
-            shiftCrossRadio.select()
-        elif correlationType=="mc":
-            shiftMutualRadio.select()
-        else:
-            shiftPhaseRadio.select()
-
         maximaFrame=tk.LabelFrame(shiftpop,text="Select Method for Finding Maxima",relief="ridge",font=MEDIUMFONT)
-        maximaFrame.grid(row=1,column=0,columnspan=2)
+        maximaFrame.grid(row=0,column=0,columnspan=2)
         maximaRadio=tk.StringVar(shiftpop)
         maximaRadio.set(findMaxima)
         maximaPixelRadio=tk.Radiobutton(maximaFrame,text="Pixel",variable=maximaRadio,value="pixel",font=SMALLFONT,command=lambda: otherRadioUpdate("pixel",numPeakEntry,sigmaEntry,windowRadEntry))
@@ -718,7 +712,7 @@ def shiftPopup():
             maximaComRadio.select()    
 
         gfSettingFrame=tk.LabelFrame(shiftpop,text="Gaussian Fit Settings",relief="sunken",font=MEDIUMFONT)
-        gfSettingFrame.grid(column=0,row=2,columnspan=2)
+        gfSettingFrame.grid(column=0,row=1,columnspan=2)
         numPeakLabel=tk.Label(gfSettingFrame,text="Number of Peaks:",font=SMALLFONT)
         numPeakEntry=tk.Entry(gfSettingFrame,width=2,font=SMALLFONT)
         numPeakEntry.insert(0,str(gaussiannumpeaks))
@@ -734,10 +728,10 @@ def shiftPopup():
         sigmaEntry.grid(column=1,row=1)
         windowRadLabel.grid(column=0,row=2)
         windowRadEntry.grid(column=1,row=2)
-        shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftUpdate(typeRadio.get(),maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
-        shiftSaveButton.grid(column=0,row=3)
+        shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftUpdate(maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
+        shiftSaveButton.grid(column=0,row=2)
         shiftCancelButton=tk.Button(shiftpop,text="Cancel",font=MEDIUMFONT,command=shiftpop.destroy)
-        shiftCancelButton.grid(column=1,row=3)
+        shiftCancelButton.grid(column=1,row=2)
         otherRadioUpdate(maximaRadio.get(),numPeakEntry,sigmaEntry,windowRadEntry)
         shiftpop.mainloop()
     else:
