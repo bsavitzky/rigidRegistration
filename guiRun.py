@@ -126,7 +126,7 @@ class CustomMask():
 #Loads default values for the calculations from defaultParam.txt
 def loadParams():
     filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"defaultParam.txt")
-    global outlierMethod,zscore,shiftMax,polycoeffmax,findMaxima,fouriern,fourierMaskType,correlationType,gaussiannumpeaks,sigmaguess,windowradius
+    global outlierMethod,zscore,shiftMax,polycoeffmax,findMaxima,fouriern,fourierMaskType,gaussiannumpeaks,sigmaguess,windowradius
     if os.path.isfile(filename):
         import imp
         f = open(filename)
@@ -394,6 +394,9 @@ def loadData(fileType):
             file=askopenfilename()
             if file=='':
                 return
+            if not file.lower().endswith('.ser'):
+                tkMessageBox.showwarning('Data Type Error',"Please make sure you have selected a .ser file to use this option.")
+                return
             stack=serReader.serReader(file)
             s =stackregister.imstack(stack[:,:,:])	 
         except:
@@ -468,7 +471,7 @@ def fourierRedo(n,type):
     fouriern=int(n)
     fourierMaskType=type
     s.makeFourierMask(mask=type,n=fouriern)
-    s.findImageShifts(correlationType=correlationType,findMaxima=findMaxima,verbose=False)
+    s.findImageShifts(correlationType="cc",findMaxima=findMaxima,verbose=False)
     outliers()
     recalc()
     fourierpop.destroy()
@@ -649,12 +652,15 @@ def fourierPopup():
         fourierpop= tk.Tk()
         fourierpop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
         fourierpop.title("Edit Fourier Transform Mark")
+        
+        fourierExplainLabel=tk.Label(fourierpop,font=SMALLFONT,text="Top left: FFT of Slice 0\nwith mask shown\nTop right: FFT of slice 0\n with mask applied\nBottom: Cross\nCorrelation between\nslices 0 and "+str(int(s.nz/2)))
+        fourierExplainLabel.grid(column=0,row=0,columnspan=2)
         fourierNLabel = tk.Label(fourierpop,text="N Value:",font=MEDIUMFONT)
-        fourierNLabel.grid(column=0,row=0)
+        fourierNLabel.grid(column=0,row=1)
 
         fourierNEntry=tk.Entry(fourierpop,width=2,font=MEDIUMFONT)
         fourierNEntry.insert(0,fouriern)
-        fourierNEntry.grid(column=1,row=0)
+        fourierNEntry.grid(column=1,row=1)
         
         radioText = tk.StringVar(fourierpop)
         radioText.set(fourierMaskType)
@@ -663,7 +669,7 @@ def fourierPopup():
         fourierLowRadio=tk.Radiobutton(fourierRadioFrame,text="Lowpass",variable=radioText,value="lowpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("lowpass",fourierNEntry.get(),fourierDisplayFrame))
         fourierBandRadio=tk.Radiobutton(fourierRadioFrame,text="Bandpass",variable=radioText,value="bandpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("bandpass",fourierNEntry.get(),fourierDisplayFrame))
         
-        fourierRadioFrame.grid(column=0,columnspan=2,row=1)
+        fourierRadioFrame.grid(column=0,columnspan=2,row=2)
         fourierNoneRadio.grid(column=0,row=0)
         fourierLowRadio.grid(column=0,row=1)
         fourierBandRadio.grid(column=0,row=2)
@@ -674,12 +680,12 @@ def fourierPopup():
         else:
             fourierBandRadio.select()
         fourierDisplayFrame=tk.Frame(fourierpop)
-        fourierDisplayFrame.grid(column=3,row=0,rowspan=3)
+        fourierDisplayFrame.grid(column=3,row=0,rowspan=4)
         fourierPopupDisplay(fourierMaskType,fourierNEntry.get(),fourierDisplayFrame)
         fourierNEntry.bind("<Return>",lambda event, radio=radioText, n=fourierNEntry, frm=fourierDisplayFrame: fourierTraceUpdate(event,radio,n,frm))
         fourierNEntry.bind("<FocusOut>",lambda event, radio=radioText, n=fourierNEntry, frm=fourierDisplayFrame: fourierTraceUpdate(event,radio,n,frm))
         fourierButtonsFrame=tk.Frame(fourierpop)
-        fourierButtonsFrame.grid(column=0,row=2)
+        fourierButtonsFrame.grid(column=0,row=3)
         fourierSaveButton=tk.Button(fourierButtonsFrame,text="Save",font=MEDIUMFONT,command=lambda: fourierRedo(fourierNEntry.get(),radioText.get()))
         fourierSaveButton.grid(column=0,row=0)
         fourierCancelButton=tk.Button(fourierButtonsFrame,text="Cancel",font=MEDIUMFONT,command=fourierpop.destroy)
@@ -815,4 +821,4 @@ def rootSetup(root):
 loadParams()    
 root = tk.Tk()
 rootSetup(root)
-root.mainloop()  
+root.mainloop()

@@ -2,7 +2,6 @@ outlierMethod = "NN"
 zscore = 2.0
 shiftMax = 20
 polycoeffmax = 3
-correlationType = "cc"
 findMaxima = "pixel"
 fouriern = 4
 fourierMaskType = "bandpass"
