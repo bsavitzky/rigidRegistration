@@ -16,14 +16,20 @@ import math as math
 import sys
 if sys.version_info[0] < 3:
     import Tkinter as tk
+    import Tkinter.ttk as ttk
+    from Tkinter.tkFileDialog import askopenfilename #ttk overwrites this one 
+    import Tkinter.tkFileDialog
+    import Tkinter.Tkconstants
+    import Tkinter.tkMessageBox
+
 else:
     import tkinter as tk
-import ttk as ttk
-from tkFileDialog import askopenfilename #ttk overwrites this one 
-import tkFileDialog
-import Tkconstants
+    import tkinter.ttk as ttk
+    from tkinter.filedialog import askopenfilename #ttk overwrites this one 
+    import tkinter.filedialog as tkFileDialog
+    import tkinter.constants as Tkconstats
+    import tkinter.messagebox as tkMessageBox
 import os.path
-import tkMessageBox
 import matplotlib.backends.backend_tkagg as tkagg
 import warnings
 warnings.filterwarnings("ignore") #Theres a warning that prints if you don't do this (Don't worry, the warning is not important)
@@ -244,9 +250,9 @@ def showView(root):
 def mouse_wheel(event):
     global canvas
     if sys.platform == "darwin":
-        canvas.yview_scroll(-1*(event.delta), "units")
+        canvas.yview_scroll(int(-1*(event.delta)), "units")
     else:
-        canvas.yview_scroll(-1*(event.delta/120), "units")
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         
 #For moving forward in the slice viewer        
 def forwardButtPress(frame,stack,txt,lng=0):
@@ -651,7 +657,7 @@ def fourierPopup():
         global fourierpop, fouriern,fourierMaskType
         fourierpop= tk.Tk()
         fourierpop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
-        fourierpop.title("Edit Fourier Transform Mark")
+        fourierpop.title("Edit Fourier Transform Mask")
         
         fourierExplainLabel=tk.Label(fourierpop,font=SMALLFONT,text="Top left: FFT of Slice 0\nwith mask shown\nTop right: FFT of slice 0\n with mask applied\nBottom: Cross\nCorrelation between\nslices 0 and "+str(int(s.nz/2)))
         fourierExplainLabel.grid(column=0,row=0,columnspan=2)
@@ -821,4 +827,4 @@ def rootSetup(root):
 loadParams()    
 root = tk.Tk()
 rootSetup(root)
-root.mainloop()
+root.mainloop()  

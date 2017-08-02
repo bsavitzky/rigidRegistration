@@ -1,7 +1,10 @@
 from __future__ import print_function
 import sys, os
 import numpy as np
-import cPickle as pickle
+if sys.version_info[0] < 3:
+    import cPickle as pickle
+else:
+    import _pickle as pickle
 relative_path = __file__
 try:
     from pyfftw import *

@@ -122,8 +122,7 @@ def serReader(fname):
             
         #Add calibrated data to start of spectra array
         eLoss = np.linspace(calibration[0],calibration[0] + (arrayLength[0]-1)*calibration[1],arrayLength[0])
-        
-        print "Spectra information: Offset = %f, Delta = %f" % (calibration[0], calibration[1])
+       
         
         if numberDimensions > 1:
             spectra = spectra.reshape(dimSize[0],dimSize[1],arrayLength)
