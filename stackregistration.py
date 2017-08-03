@@ -105,6 +105,29 @@ class imstack(object):
             return
         return
 
+    def makeEllipticalGaussianMask(self, n, theta, epsilon):
+        """
+        Defines the Fourier space mask to be used when finding cross-correlations as a
+        non-isotropic gaussian function.
+
+        Inputs:
+            n   int or float    Defines high frequency 'cutoff'.  Not strictly a cutoff -
+                                the frequency corresponding to n pixels is set to 3*sigma along
+                                the axis oriented along theta.
+            theta   float       Defines orientation of axes, in degrees
+            epsilon float       Anisotropy of mask (axis1length/axis2length)
+        """
+        sigma1 = self.ny/n/6.
+        sigma2 = sigma1*epsilon
+        thetarad = np.pi/2.0 - np.radians(theta)
+
+        a = (np.cos(thetarad)**2)/(2*sigma1**2) + (np.sin(thetarad)**2)/(2*sigma2**2)
+        b = -(np.sin(2*thetarad))/(4*sigma1**2) + (np.sin(2*thetarad))/(4*sigma2**2)
+        c = (np.sin(thetarad)**2)/(2*sigma1**2) + (np.cos(thetarad)**2)/(2*sigma2**2)
+
+        self.mask_fourierspace = np.fft.fftshift(np.exp( -(a*self.kx**2 + 2*b*self.kx*self.ky + c*self.ky**2) ))
+        return
+
 
     def findImageShifts(self, correlationType="cc", findMaxima="pixel", verbose=True):
         """
