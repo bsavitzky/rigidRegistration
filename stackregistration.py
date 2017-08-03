@@ -51,9 +51,8 @@ class imstack(object):
         # Include fftw library, if available
         self.fftw = FFTW.WrapFFTW((self.nx,self.ny))
 
-        # Set initial params for gaussian fitting and CoM detection
+        # Set initial params for gaussian fitting
         self.setGaussianFitParams()
-        self.setCoMParams()
 
         return
 
@@ -117,10 +116,7 @@ class imstack(object):
                                                unit cell jumps from sampling noise in atomic
                                                resolution data.  Change fitting parameters by
                                                calling self.setGaussianFitParams().
-                                        'com' = center of mass. Finds center of mass twice, once
-                                                over whole image, and again over small region
-                                                about center from first iteration.
-            verbose             bool    If True prints images being correlated.
+           verbose             bool    If True prints images being correlated.
         Outputs:
             X_ij, Y_ij    ndarrays of floats, shape (nz,nz), of calculated shifts in X and Y.
         """
@@ -147,10 +143,8 @@ class imstack(object):
             findMaxima = self.getSingleShift_pixel
         elif findMaxima=="gf":
             findMaxima = self.getSingleShift_gaussianFit
-        elif findMaxima=="com":
-            findMaxima = self.getSingleShift_com
         else:
-            print("'findMaxima' must be 'pixel', 'gf', or 'com'.")
+            print("'findMaxima' must be 'pixel', or 'gf'.")
             return
 
         # Calculate all image shifts
@@ -267,30 +261,6 @@ class imstack(object):
 
         shift_x, shift_y = positions[np.argmax(offsets+amplitudes),:]
         return shift_x-np.shape(cc)[0]/2.0, shift_y-np.shape(cc)[1]/2.0
-
-    def setCoMParams(self,num_iter=2,min_window_frac=3):
-        self.num_iter=num_iter
-        self.min_window_frac=min_window_frac
-        return
-
-    def getSingleShift_com(self,cc):
-        """
-        TODO: Document this function
-        """
-        ccs=np.fft.fftshift(cc)
-        norm=np.sum(ccs)
-        x_com, y_com = np.sum(ccs*self.rx)/norm, np.sum(ccs*self.ry)/norm
-
-        # Iterate
-        n_vals=np.linspace(self.min_window_frac,0,self.num_iter,endpoint=False)[::-1]
-        for n in n_vals:
-            r_com = np.sqrt((x_com-self.rx)**2+(y_com-self.ry)**2)
-            weights = (r_com<self.ny/n/2)*(np.cos(n*np.pi*r_com/self.ny))**2
-            ccs_weighted = ccs*weights
-            norm = np.sum(ccs_weighted)
-            x_com,y_com = np.sum(self.rx*ccs_weighted)/norm, np.sum(self.ry*ccs_weighted)/norm
-
-        return x_com-self.nx/2.0, y_com-self.ny/2
 
     def get_n_cross_correlation_maxima(self,cc,n):
         """
