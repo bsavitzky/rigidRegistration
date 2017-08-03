@@ -72,7 +72,7 @@ def on_edge(im,x0,y0,radius):
         return True
 
 def get_cutout(im,x0,y0,radius):
-    return im[x0-radius:x0+radius+1, y0-radius:y0+radius+1]
+    return im[int(x0-radius):int(x0+radius+1), int(y0-radius):int(y0+radius+1)]
 
 
 def fit_peaks(data, est_params, window_radius, print_mod=100, verbose=True):
