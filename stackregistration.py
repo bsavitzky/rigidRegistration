@@ -82,7 +82,7 @@ class imstack(object):
                                                 by n
                                     "blackman" - a blackman lowpass mask
                                     "gaussian" - a gaussian lowpass mask.  High freq. cutoff
-                                        defined by n is NOT a hard cutoff, and is set to 2sigma
+                                        defined by n is NOT a hard cutoff, and is set to 3*sigma
                                     "none" - no mask
         """
         nx,ny = float(self.nx),float(self.ny)
@@ -96,6 +96,9 @@ class imstack(object):
             self.mask_fourierspace = np.fft.fftshift((self.kr<a)*((21./50.)+0.5*np.cos((np.pi*self.kr)/a)+(2./25.)*np.cos((2*np.pi*self.kr)/a)))
         elif mask=="none":
             self.mask_fourierspace = np.ones_like(self.kr)
+        elif mask=="gaussian":
+            sigma=self.ny/n/6.
+            self.mask_fourierspace = np.fft.fftshift(np.exp(-self.kr**2/(2*sigma**2)))
         else:
             print("Mask type must be 'bandpass', 'lowpass', 'blackman', 'gaussian', or 'none'.")
             print("Alternatively, define a custom mask by setting the self.mask_fourierspace attribute manually.  The self.kr coordinates may be useful.")
