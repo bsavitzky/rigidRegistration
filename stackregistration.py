@@ -270,7 +270,7 @@ class imstack(object):
         shifts=np.zeros((n,2))
         for i in range(n):
             shifts[i,0],shifts[i,1]=np.unravel_index(np.argmax(cc_shift),np.shape(cc_shift))
-            cc[shifts[i,0],shifts[i,1]]=0
+            cc_shift[shifts[i,0],shifts[i,1]]=0
         return shifts
 
 
