@@ -9,12 +9,13 @@ See, e.g., stackregistration_sample_notebook.ipynb.
 # Import global libraries
 from __future__ import print_function, division, absolute_import
 import numpy as np
-import FFTW
 
 # Import local libraries
-import display
-import save
-from utils import generateShiftedImage, gauss2d, fit_gaussian, on_edge, get_cutout, fit_peaks, getpaths, allpaths
+from . import display
+from . import save
+from . import FFTW
+from .utils import generateShiftedImage, gauss2d, fit_gaussian, on_edge, get_cutout, fit_peaks, getpaths, allpaths
+
 
 class imstack(object):
     """
