@@ -11,7 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import tifffile
 import json
 
-def save(imstack, fout,crop=False):
+def save(imstack, fout, crop=True):
     """
     Saves imstack.average_image to fout.
     Saves as a 32-bit tif using tifffile package.
@@ -19,9 +19,6 @@ def save(imstack, fout,crop=False):
     Inputs:
         fout    str     path to output filename.
                         If fout does not end in .tif, it is appended
-                        
-                        
-    fourier mask parameters
     """
     if splitext(fout)[1]=='.tif':
         filepath=fout

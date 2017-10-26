@@ -16,7 +16,6 @@ from . import save
 from . import FFTW
 from .utils import generateShiftedImage, gauss2d, fit_gaussian, on_edge, get_cutout, fit_peaks, getpaths, allpaths
 
-
 class imstack(object):
     """
     Object for functions on stacks of images.
@@ -74,7 +73,6 @@ class imstack(object):
         Defines the Fourier space mask to be used when finding cross-correlation.
 
         Inputs:
-<<<<<<< HEAD:rigidregistration/stackregistration.py
             n   int or float        Defines upper frequency allowed, in pixels - i.e. features
                                     smaller than ~n pixels are smoothed.  For masks with
                                     discrete cutoffs, the maximum frequency is k_max / n.
@@ -195,7 +193,7 @@ class imstack(object):
         else:
             print("'findMaxima' must be 'pixel', 'gf', or 'com'.")
             return
-        
+
         # Calculate all image shifts
         for i in range (0, self.nz-1):
             for j in range(i+1, self.nz):
@@ -411,7 +409,7 @@ class imstack(object):
             print("Outlier detection method must be 'NN' or 'transitivity'. Skipping outlier detection")
         self.update_Rij_mask()
         return
- 
+
     ############ Methods for outlier detection ###################
 
     def get_outliers_NN(self, max_shift):
@@ -433,7 +431,7 @@ class imstack(object):
             if i==0:
                 imin=0
                 jump_max=jump_max-1
-            else: 
+            else:
                 imin=i-1
             if i==size-1:
                 imax=size-1
@@ -488,7 +486,7 @@ class imstack(object):
                 transitivity_scores[j,i] = transitivity_scores[i,j]
         return transitivity_scores<threshold
 
-    
+
     ############ Methods for reconstructing average image ############
 
     def make_corrected_Rij(self,maxpaths=5):
@@ -579,7 +577,7 @@ class imstack(object):
                 self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),:self.shifts_y.min(),:]
             else:
                 self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),self.shifts_y.max():self.shifts_y.min(),:]
-        
+
     ########################  Display methods #########################
 
     def show(self,crop=True):
@@ -622,7 +620,7 @@ class imstack(object):
             image_index     int     FFT to display
         """
         return display.show_Fourier_mask(self,i=i,j=j)
-        
+
     def show_report(self):
         """
         Displays a report showing the average image, its FFT, and all shifts with and without

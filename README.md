@@ -1,6 +1,6 @@
 # Rigid Registration
 
-We have created a new and imporved method of registering stacks of images from scanning transmission electron microscopy (STEM).
+We have created a new and improved method of registering stacks of images from scanning transmission electron microscopy (STEM).
 In this method, we compare every pair of images, rather than comparing all images to one reference and use the redundant information from all of these pairs to determine the shifts between each image before averaging and getting the final image. 
 See our paper in *not gonna jinx this* for more information on our methods. 
 
@@ -63,7 +63,7 @@ v. 1.0 - Original Release
 
 ## License
 
-This project is licensed under the MIT License?
+This project is licensed under the MIT License
 
 ## Acknowledgments
 

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 
-def show(imstack,crop=False):
+def show(imstack,crop=True):
     """
     Show average image and its FFT.
     """
@@ -35,7 +35,7 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
         Ymax    float   Scales Yij colormap between -Ymax and +Ymax
         mask    bool    If true, overlays mask of bad data points.
     """
-    
+
     X_ij_copy=np.copy(imstack.X_ij)
     Y_ij_copy=np.copy(imstack.Y_ij)
     ismask = True
@@ -47,7 +47,7 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
                     X_ij_copy[i,j]=0
                     Y_ij_copy[i,j]=0
     if mask and not (ismask and imstack.nz_min==0 and imstack.nz_max==imstack.nz ):
-        
+
         fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
         if Xmax:
             ax1.matshow(X_ij_copy,cmap=r'RdBu',vmin=-Xmax,vmax=Xmax)
@@ -57,7 +57,7 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
             ax2.matshow(Y_ij_copy,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
         else:
             ax2.matshow(Y_ij_copy,cmap=r'RdBu')
-        
+
         # Make transparent colormap
         cmap_mask=plt.cm.binary_r
         cmap_mask._init()
@@ -80,7 +80,7 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
             ax2.matshow(imstack.Y_ij,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
         else:
             ax2.matshow(imstack.Y_ij,cmap=r'RdBu')
-    
+
     ax1.set_title("Shift Matrix (X)",y=1.09)
     ax2.set_title("Shift Matrix (Y)",y=1.09)
     ax1.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
