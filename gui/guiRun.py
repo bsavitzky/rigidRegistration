@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+#the mask parameters are a dictionary now, not 2 separate variables
+#Theres more mask types
+#Put elliptical masks (if you want to)
+
 # Import global libraries
 import numpy as np
 import matplotlib
