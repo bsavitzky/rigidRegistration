@@ -9,8 +9,9 @@ from os.path import splitext
 from matplotlib.patches import Rectangle
 from matplotlib.backends.backend_pdf import PdfPages
 import tifffile
+import json
 
-def save(imstack, fout):
+def save(imstack, fout,crop=False):
     """
     Saves imstack.average_image to fout.
     Saves as a 32-bit tif using tifffile package.
@@ -18,12 +19,33 @@ def save(imstack, fout):
     Inputs:
         fout    str     path to output filename.
                         If fout does not end in .tif, it is appended
+                        
+                        
+    fourier mask parameters
     """
     if splitext(fout)[1]=='.tif':
         filepath=fout
     else:
         filepath=fout+'.tif'
-    tifffile.imsave(filepath,imstack.average_image.astype('float32'))
+    metadata=dict()
+    metadata['X_ij']=imstack.X_ij.tolist()
+    metadata['Y_ij']=imstack.Y_ij.tolist()
+    metadata['Rij_mask']=imstack.Rij_mask.tolist()
+    metadata['shifts_x']=imstack.shifts_x.tolist()
+    metadata['shifts_y']=imstack.shifts_y.tolist()
+    metadata['method_of_cross_correlation']=imstack.correlation_type
+    metadata['method_of_finding_maxima']=imstack.find_maxima_method
+    if imstack.find_maxima_method=="gf":
+        metadata['gaussian_num_of_peaks']=imstack.num_peaks
+        metadata['gaussian_sigma_guess']=imstack.sigma_guess
+        metadata['gaussian_window_radius']=imstack.window_radius
+    metadata['fourier_mask_type']=imstack.fourier_mask_type
+    metadata['fourier_upper_frequency']=imstack.fourier_upper_frequency
+    metadata = json.dumps(metadata)
+    if crop:
+        tifffile.imsave(filepath,imstack.cropped_image.astype('float32'),description=metadata)
+    else:
+        tifffile.imsave(filepath,imstack.average_image.astype('float32'),description=metadata)
     return
 
 def save_report(imstack, fout):

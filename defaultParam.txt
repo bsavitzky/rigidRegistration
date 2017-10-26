@@ -1,0 +1,10 @@
+outlierMethod = "NN"
+zscore = 2.0
+shiftMax = 20
+polycoeffmax = 3
+findMaxima = "pixel"
+fouriern = 4
+fourierMaskType = "bandpass"
+gaussiannumpeaks = 3
+sigmaguess = 2
+windowradius = 6

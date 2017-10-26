@@ -7,19 +7,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
-def show(imstack):
+
+def show(imstack,crop=False):
     """
     Show average image and its FFT.
     """
-    fig,(ax1,ax2)=plt.subplots(1,2)
-    ax1.matshow(imstack.average_image,cmap='gray')
-    ax2.matshow(np.log(np.abs(np.fft.fftshift(np.fft.fft2(imstack.average_image))))[int(imstack.nx/4):int(3*imstack.nx/4),int(imstack.ny/4):int(3*imstack.ny/4)],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fft2(imstack.average_image))).ravel()))
+    fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
+    if crop:
+        ax1.matshow(imstack.cropped_image,cmap='gray')
+    else:
+        ax1.matshow(imstack.average_image,cmap='gray')
+    ax2.matshow(np.log(np.abs(np.fft.fftshift(np.fft.fft2(imstack.average_image))))[:imstack.nx,:imstack.ny],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fft2(imstack.average_image))).ravel()))
     ax1.axis('off')
     ax2.axis('off')
-    plt.show()
-    return
+    ax1.set_title("Averaged Image",y=1)
+    ax2.set_title("Fourier Transform",y=1)
+    fig.tight_layout()
+    plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.89,wspace=0.03,hspace=0.01)
+    return fig
 
-def show_Rij(imstack,Xmax=False,Ymax=False, mask=True):
+def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
     """
     Display Rij matrix.
 
@@ -28,34 +35,63 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True):
         Ymax    float   Scales Yij colormap between -Ymax and +Ymax
         mask    bool    If true, overlays mask of bad data points.
     """
-    fig,(ax1,ax2)=plt.subplots(1,2)
-    if Xmax:
-        ax1.matshow(imstack.X_ij,cmap=r'RdBu',vmin=-Xmax,vmax=Xmax)
-    else:
-        ax1.matshow(imstack.X_ij,cmap=r'RdBu')
-    if Ymax:
-        ax2.matshow(imstack.Y_ij,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
-    else:
-        ax2.matshow(imstack.Y_ij,cmap=r'RdBu')
-    if mask and np.sum(imstack.Rij_mask==False)!=0:
+    
+    X_ij_copy=np.copy(imstack.X_ij)
+    Y_ij_copy=np.copy(imstack.Y_ij)
+    ismask = True
+    for i in range(imstack.nz):
+        for j in range(imstack.nz):
+            if imstack.Rij_mask[i,j]==False:
+                ismask = False
+                if normalization:
+                    X_ij_copy[i,j]=0
+                    Y_ij_copy[i,j]=0
+    if mask and not (ismask and imstack.nz_min==0 and imstack.nz_max==imstack.nz ):
+        
+        fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
+        if Xmax:
+            ax1.matshow(X_ij_copy,cmap=r'RdBu',vmin=-Xmax,vmax=Xmax)
+        else:
+            ax1.matshow(X_ij_copy,cmap=r'RdBu')
+        if Ymax:
+            ax2.matshow(Y_ij_copy,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
+        else:
+            ax2.matshow(Y_ij_copy,cmap=r'RdBu')
+        
         # Make transparent colormap
         cmap_mask=plt.cm.binary_r
         cmap_mask._init()
         alphas=np.linspace(1, 0, cmap_mask.N+3)
         cmap_mask._lut[:,-1] = alphas
+        # Make mask with full size
+        full_mask = np.zeros_like(imstack.X_ij,dtype=bool)
+        full_mask=imstack.Rij_mask
+        imstack.full_mask=full_mask
         # Overlay mask
-        ax1.matshow(imstack.Rij_mask,cmap=cmap_mask)
-        ax2.matshow(imstack.Rij_mask,cmap=cmap_mask)
+        ax1.matshow(full_mask,cmap=cmap_mask)
+        ax2.matshow(full_mask,cmap=cmap_mask)
+    else:
+        fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
+        if Xmax:
+            ax1.matshow(imstack.X_ij,cmap=r'RdBu',vmin=-Xmax,vmax=Xmax)
+        else:
+            ax1.matshow(imstack.X_ij,cmap=r'RdBu')
+        if Ymax:
+            ax2.matshow(imstack.Y_ij,cmap=r'RdBu',vmin=-Ymax,vmax=Ymax)
+        else:
+            ax2.matshow(imstack.Y_ij,cmap=r'RdBu')
+    
+    ax1.set_title("Shift Matrix (X)",y=1.09)
+    ax2.set_title("Shift Matrix (Y)",y=1.09)
     ax1.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     ax2.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax1.axis('off')
-    ax2.axis('off')
-    ax1.set_title("X shifts")
-    ax2.set_title("Y shifts")
+    ax1.xaxis.set_ticks(np.arange(0, imstack.nz, 5))
+    ax2.xaxis.set_ticks(np.arange(0, imstack.nz, 5))
+    ax1.yaxis.set_ticks(np.arange(0, imstack.nz, 5))
+    ax2.yaxis.set_ticks(np.arange(0, imstack.nz, 5))
     plt.tight_layout()
-    plt.show()
-
-    return
+    plt.subplots_adjust(bottom=0.03)
+    return fig
 
 def show_Rij_c(imstack,Xmax=False,Ymax=False, mask=True):
     """

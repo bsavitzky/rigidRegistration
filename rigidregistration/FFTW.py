@@ -1,11 +1,11 @@
 from __future__ import print_function
 import sys, os
 import numpy as np
-relative_path = __file__
-try:
+if sys.version_info[0] < 3:
     import cPickle as pickle
-except ImportError:
-    import pickle
+else:
+    import _pickle as pickle
+relative_path = __file__
 try:
     from pyfftw import *
     hasfftw = True
@@ -22,8 +22,8 @@ class WrapFFTW(object):
        self._threads = kwargs.get('threads', 8)
        self.wisdomfile = kwargs.get('wisdomfile', None)
        self.selfpath = os.path.split(relative_path)[0]
-
-       if self.wisdomfile is None:
+       
+       if self.wisdomfile is None: 
            self.wisdomfile = os.path.join(self.selfpath, 'fftw_wisdom.pkl')
        try:
            self._wisdom, self._gotwisdom = [], False
@@ -36,17 +36,17 @@ class WrapFFTW(object):
        self.data = n_byte_align(np.zeros(self.shape), 16, 'complex128')
        self.data_k = n_byte_align(np.zeros(self.shape), 16, 'complex128')
 
-       self.fft_object = FFTW(self.data, self.data_k,
+       self.fft_object = FFTW(self.data, self.data_k, 
                               axes=(0,1), flags = self._flags,
                               threads = self._threads)
        self.ifft_object = FFTW(self.data_k, self.data,
                                direction = 'FFTW_BACKWARD',
                                axes=(0,1), flags = self._flags,
                                threads = self._threads)
-
+       
        self._wisdom = export_wisdom()
        with open(self.wisdomfile, 'wb') as outfile:
-           pickle.dump(self._wisdom, outfile, protocol=2)
+           pickle.dump(self._wisdom, outfile, -1) 
 
    def fft(self, inp):
        self.data[:,:] = inp
@@ -65,7 +65,7 @@ class WrapFFTW_NUMPY(object):
        return np.fft.fftn(inp)
 
    def ifft(self, inp):
-       return np.fft.ifftn(inp)
+       return np.fft.ifftn(inp) 
 
 
 if not hasfftw:
