@@ -400,13 +400,13 @@ class imstack(object):
         """
         if method=="NN":
             self.outlier_mask = self.get_outliers_NN(args[0])
-        if method=="transitivity":
+        elif method=="transitivity":
             if len(args)==1:
                 self.outlier_mask = self.get_outliers_transitivity(args[0])
             else:
                 self.outlier_mask = self.get_outliers_transitivity(args[0],args[1])
         else:
-            print("Outlier detection method must be 'NN' or 'transitivity'. Skipping outlier detection")
+            print("Outlier detection method must be 'NN' or 'transitivity'. Skipping outlier detection.")
         self.update_Rij_mask()
         return
 
