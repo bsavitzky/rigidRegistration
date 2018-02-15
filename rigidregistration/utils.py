@@ -179,14 +179,18 @@ def getpaths(i,j,maxpaths,nz):
 
     a,b,count=0,0,0
     while(len(seq)<maxpaths):
-        if i-a<=0:
-            b += 1
-        elif j+b>=nz-1:
-            a += 1
-        elif a%2:
-            b+=1
+        if count%2==0:
+            if i-a>=0:
+                a+=1
+            else:
+                b+=1
+            count+=1
         else:
-            a+=1
+            if j+b<nz-1:
+                b+=1
+            else:
+                a+=1
+            count+=1
         i0,j0 = i-a,j+b
 
         n1,n2 = range(i-1,i0,-1),range(j0-1,i+1,-1)

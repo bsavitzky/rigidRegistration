@@ -489,17 +489,21 @@ class imstack(object):
 
     ############ Methods for reconstructing average image ############
 
-    def make_corrected_Rij(self,maxpaths=5):
+    def make_corrected_Rij(self):
+        maxpaths=5
         good_images=np.nonzero(np.all(self.Rij_mask==False,axis=1)==False)[0]
         temp_mask = np.copy(self.Rij_mask)
         self.X_ij_c,self.Y_ij_c = np.where(self.Rij_mask,self.X_ij,float('nan')),np.where(self.Rij_mask,self.Y_ij,float('nan'))
+        count=1
         while np.all(temp_mask[good_images,:][:,good_images])==False:
+            if count%1000==0:
+                maxpaths *= 2
             for i in range(len(self.X_ij)-1):
                 for j in range(i+1,len(self.Y_ij)):
                     if not temp_mask[i,j]:
                         n = 0.
                         x,y = 0.,0.
-                        paths = allpaths(i,j,maxpaths)
+                        paths = getpaths(i,j,maxpaths,self.nz)
                         for p in paths:
                             if np.all([temp_mask[ip] for ip in p]):
                                 x += np.array([self.X_ij_c[ip] for ip in p]).sum()
@@ -509,6 +513,7 @@ class imstack(object):
                             self.X_ij_c[i,j],self.X_ij_c[j,i] = -x/n,x/n
                             self.Y_ij_c[i,j],self.Y_ij_c[j,i] = -y/n,y/n
             temp_mask = (np.isnan(self.X_ij_c)==False)*(np.isnan(self.Y_ij_c)==False)
+            count += 1
         self.Rij_mask_c = temp_mask
         self.X_ij_c[np.isnan(self.X_ij_c)] = 0
         self.Y_ij_c[np.isnan(self.Y_ij_c)] = 0
