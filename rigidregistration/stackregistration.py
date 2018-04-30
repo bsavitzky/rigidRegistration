@@ -134,6 +134,19 @@ class imstack(object):
         self.mask_fourierspace = np.fft.fftshift(np.exp( -(a*self.kx**2 + 2*b*self.kx*self.ky + c*self.ky**2) ))
         return
 
+    def makeUserDefinedFourierMask(self,mask):
+        """
+        Defines the Fourier space mask to be used when finding cross-correlation using a unique, user defined mask.
+        This function expects a mask defined with the origin of k-space at the center of an array (i.e. at (fov/2,fov/2)).
+        For masks defined with the origin of k-space at (0,0), the mask can be set directly with self.mask_fourierspace = mask.
+
+        Inputs:
+            mask    A mask, of shape (fov,fov).
+        """
+        self.mask_params={'masktype':"User defined"}
+        self.mask_fourierspace = np.fft.fftshift(mask)
+        return
+
     def findImageShifts(self, correlationType="cc", findMaxima="pixel", verbose=True):
         """
         Gets all image shifts.
