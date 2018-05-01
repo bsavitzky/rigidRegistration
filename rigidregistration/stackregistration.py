@@ -394,41 +394,42 @@ class imstack(object):
         self.update_Rij_mask()
         return
 
-    def get_outliers(self, method="transitivity", *args):
+    ############ Methods for outlier detection ###################
+
+    def get_outliers(self, threshold, maxpaths=5):
         """
         Find outliers in Rij matrix, which will not be used in calculating final average image.
+        Outliers are calculated by enforcing that correct transitivity holds between relative
+        image shifts.
 
         Inputs:
-            method  str     Method to be used for outlier detection.
-                            Currenly supported: 'NN','transitivity'
-
-        Currently supported outlier detection methods:
-        NN - detects outliers by looking at the shifts of the nearest neighbor image pairs
-        args:
-            arg[0]: max_shift - outlier shift threshhold
-        transitivity - detects outliers by enforcing additive transititive in stage positions
-        args:
-            arg[0]: threshold - deviation from perfect transitivity which is considered an outlier (distance in pixels)
-            arg[1]: maxpaths - number of paths to use to calculate deviation from transitivity.  Defaults to 5.
+            threshhold  float   Threshhold value controlling how much deviation from perfect
+                                transitivity is consisdered acceptable.
+            maxpaths    int     The number of transitivity relationships connecting two images
+                                which are used to evaluate if a single image shift is correct
         """
-        if method=="NN":
-            self.outlier_mask = self.get_outliers_NN(args[0])
-        elif method=="transitivity":
-            if len(args)==1:
-                self.outlier_mask = self.get_outliers_transitivity(args[0])
-            else:
-                self.outlier_mask = self.get_outliers_transitivity(args[0],args[1])
-        else:
-            print("Outlier detection method must be 'NN' or 'transitivity'. Skipping outlier detection.")
+        transitivity_scores=np.zeros_like(self.X_ij)
+        for i in range(len(self.X_ij)-1):
+            for j in range(i+1,len(self.X_ij)):
+                paths = getpaths(i,j,maxpaths,self.nz)
+                for p in paths:
+                    pdx = np.array([self.X_ij[ip] for ip in p])
+                    pdy = np.array([self.Y_ij[ip] for ip in p])
+                    transitivity_scores[i,j] += np.sqrt((pdx.sum()-self.X_ij[j,i])**2+(pdy.sum()-self.Y_ij[j,i])**2)
+        transitivity_scores /= maxpaths
+        for i in range(len(self.X_ij)-1):
+            for j in range(i+1,len(self.Y_ij)):
+                transitivity_scores[j,i] = transitivity_scores[i,j]
+        self.outlier_mask = transitivity_scores<threshold
         self.update_Rij_mask()
         return
 
-    ############ Methods for outlier detection ###################
-
     def get_outliers_NN(self, max_shift):
         """
-        Find outliers by looking at shift value to all 8 NN pixels in Rij.  If too many
-        are larger than max_shift, cc is identified as an outlier.
+        An alternative, simpler approach to outlier detection.
+        Find outliers by looking at the difference between each shift matrix element and its
+        nearest neighbor elements. If too many are larger than max_shift, the element is
+        identified as an outlier.
 
         Inputs:
             max_shift   int or float    threshhold value for NN shifts
@@ -481,24 +482,9 @@ class imstack(object):
         for i in range (0, self.nz_max-self.nz_min-1):
             for j in range(i+1, self.nz_max-self.nz_min):
                 mask[j,i] = mask[i,j]
-
-        return mask
-
-    def get_outliers_transitivity(self, threshold, maxpaths=5):
-        transitivity_scores=np.zeros_like(self.X_ij)
-        for i in range(len(self.X_ij)-1):
-            for j in range(i+1,len(self.X_ij)):
-                paths = getpaths(i,j,maxpaths,self.nz)
-                for p in paths:
-                    pdx = np.array([self.X_ij[ip] for ip in p])
-                    pdy = np.array([self.Y_ij[ip] for ip in p])
-                    transitivity_scores[i,j] += np.sqrt((pdx.sum()-self.X_ij[j,i])**2+(pdy.sum()-self.Y_ij[j,i])**2)
-        transitivity_scores /= maxpaths
-        for i in range(len(self.X_ij)-1):
-            for j in range(i+1,len(self.Y_ij)):
-                transitivity_scores[j,i] = transitivity_scores[i,j]
-        return transitivity_scores<threshold
-
+        self.outlier_mask = mask
+        self.update_Rij_mask()
+        return
 
     ############ Methods for reconstructing average image ############
 
