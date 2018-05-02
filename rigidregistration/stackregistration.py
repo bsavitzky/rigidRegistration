@@ -9,6 +9,7 @@ See, e.g., stackregistration_sample_notebook.ipynb.
 # Import global libraries
 from __future__ import print_function, division, absolute_import
 import numpy as np
+from math import floor, ceil
 
 # Import local libraries
 from . import display
@@ -560,27 +561,27 @@ class imstack(object):
         return
 
     def crop_image(self):
-        if self.shifts_x.min()>=0:
-            if self.shifts_y.min()>=0:
-                self.cropped_image = self.average_image[self.shifts_x.max():,self.shifts_y.max():,:]
-            elif self.shifts_y.max()<=0:
-                self.cropped_image = self.average_image[self.shifts_x.max():,:self.shifts_y.min(),:]
-            else:
-                self.cropped_image = self.average_image[self.shifts_x.max():,self.shifts_y.min():self.shifts_y.max(),:]
-        elif self.shifts_x.max()<=0:
-            if self.shifts_y.min()>=0:
-                self.cropped_image = self.average_image[:self.shifts_x.min(),self.shifts_y.max():,:]
-            elif self.shifts_y.max()<=0:
-                self.cropped_image = self.average_image[:self.shifts_x.min(),:self.shifts_y.min(),:]
-            else:
-                self.cropped_image = self.average_image[:self.shifts_x.min(),self.shifts_y.min():self.shifts_y.max(),:]
-        else:
-            if self.shifts_y.min()>=0:
-                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),self.shifts_y.max():,:]
-            elif self.shifts_y.max()<=0:
-                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),:self.shifts_y.min(),:]
-            else:
-                self.cropped_image = self.average_image[self.shifts_x.max():self.shifts_x.min(),self.shifts_y.max():self.shifts_y.min(),:]
+        """
+        This function determines the min/max values in the final, averaged image which represent
+        physically meaningful information, using the calculated shift values. The cropped image
+        is then simply defined as the corresponding subset of the average image.
+        """
+        self.xmin,self.xmax = self.shifts_x.max(),self.shifts_x.min()
+        self.ymin,self.ymax = self.shifts_y.max(),self.shifts_y.min()
+        if self.xmax>0:
+            self.xmax=self.nx
+        if self.xmin<0:
+            self.xmin=0
+        if self.ymax>0:
+            self.ymax=self.ny
+        if self.ymin<0:
+            self.ymin=0
+        self.xmin=int(ceil(self.xmin))
+        self.xmax=int(floor(self.xmax))
+        self.ymin=int(ceil(self.ymin))
+        self.ymax=int(floor(self.ymax))
+        self.cropped_image=self.average_image[self.xmin:self.xmax,self.ymin:self.ymax]
+        return
 
     ########################  Display methods #########################
 
