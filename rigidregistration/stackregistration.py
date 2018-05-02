@@ -585,15 +585,19 @@ class imstack(object):
 
     ########################  Display methods #########################
 
-    def show(self,crop=True):
+    def show(self,crop=True, returnfig=False):
         """
         Show average image and its FFT.
         """
         if crop:
             self.crop_image()
-        return display.show(self,crop=crop)
+        if returnfig:
+            return display.show(self,crop=crop,returnfig=returnfig)
+        else:
+            display.show(self,crop=crop,returnfig=returnfig)
+            return
 
-    def show_Rij(self,Xmax=False,Ymax=False, mask=True,normalization=True):
+    def show_Rij(self,Xmax=False,Ymax=False, mask=True,normalization=True, returnfig=False):
         """
         Display Rij matrix.
 
@@ -602,7 +606,11 @@ class imstack(object):
             Ymax    float   Scales Yij colormap between -Ymax and +Ymax
             mask    bool    If true, overlays mask of bad data points.
         """
-        return display.show_Rij(self,Xmax=Xmax,Ymax=Ymax,mask=mask,normalization=normalization)
+        if returnfig:
+            return display.show_Rij(self,Xmax=Xmax,Ymax=Ymax,mask=mask,normalization=normalization,returnfig=returnfig)
+        else:
+            display.show_Rij(self,Xmax=Xmax,Ymax=Ymax,mask=mask,normalization=normalization,returnfig=returnfig)
+            return
 
     def show_Rij_c(self,Xmax=False,Ymax=False, mask=True):
         """

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 
-def show(imstack,crop=True):
+def show(imstack,crop=True,returnfig=False):
     """
     Show average image and its FFT.
     """
@@ -26,9 +26,12 @@ def show(imstack,crop=True):
     ax2.grid(False)
     fig.tight_layout()
     plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.89,wspace=0.03,hspace=0.01)
-    return fig
+    if returnfig:
+        return fig
+    else:
+        return
 
-def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
+def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True,returnfig=False):
     """
     Display Rij matrix.
 
@@ -95,7 +98,11 @@ def show_Rij(imstack,Xmax=False,Ymax=False, mask=True,normalization=True):
     ax2.yaxis.set_ticks(np.arange(0, imstack.nz, 5))
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.03)
-    return fig
+    if returnfig:
+        return fig
+    else:
+        return
+
 
 def show_Rij_c(imstack,Xmax=False,Ymax=False, mask=True):
     """
@@ -132,7 +139,6 @@ def show_Rij_c(imstack,Xmax=False,Ymax=False, mask=True):
     ax2.set_title("Y shifts")
     plt.tight_layout()
     plt.show()
-
     return
 
 def show_Fourier_mask(imstack,i=0,j=1):
@@ -162,6 +168,7 @@ def show_Fourier_mask(imstack,i=0,j=1):
     ax2.set_title("Masked FFT")
     ax3.set_title("Cross correlation")
     plt.show()
+    return
 
 
 def show_report(imstack):
