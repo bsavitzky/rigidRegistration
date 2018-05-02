@@ -30,15 +30,18 @@ def save(imstack, fout, crop=True):
     metadata['Rij_mask']=imstack.Rij_mask.tolist()
     metadata['shifts_x']=imstack.shifts_x.tolist()
     metadata['shifts_y']=imstack.shifts_y.tolist()
+    metadata['xmin']=imstack.xmin
+    metadata['xmax']=imstack.xmax
+    metadata['ymin']=imstack.ymin
+    metadata['ymax']=imstack.ymax
     metadata['method_of_cross_correlation']=imstack.correlation_type
     metadata['method_of_finding_maxima']=imstack.find_maxima_method
     if imstack.find_maxima_method=="gf":
         metadata['gaussian_num_of_peaks']=imstack.num_peaks
         metadata['gaussian_sigma_guess']=imstack.sigma_guess
         metadata['gaussian_window_radius']=imstack.window_radius
-    metadata['fourier_mask_type']=imstack.fourier_mask_type
-    metadata['fourier_upper_frequency']=imstack.fourier_upper_frequency
-    metadata = json.dumps(metadata)
+    metadata['fourier_mask_parameters']=imstack.mask_params
+    metadata = json.dumps([metadata])
     if crop:
         tifffile.imsave(filepath,imstack.cropped_image.astype('float32'),description=metadata)
     else:
