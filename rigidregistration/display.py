@@ -190,15 +190,15 @@ def show_report(imstack):
     fig2,((ax21,ax22),(ax23,ax24)) = plt.subplots(2,2)
 
     ax21.matshow(imstack.X_ij,cmap=r'RdBu')
-    ax22.matshow(imstack.X_ij,cmap=r'RdBu')
+    ax23.matshow(imstack.X_ij,cmap=r'RdBu')
     ax21.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax22.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask==False)!=0:
-        ax22.matshow(imstack.Rij_mask,cmap=cmap_mask)
-
-    ax23.matshow(imstack.Y_ij,cmap=r'RdBu')
-    ax24.matshow(imstack.Y_ij,cmap=r'RdBu')
     ax23.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
+    if np.sum(imstack.Rij_mask==False)!=0:
+        ax23.matshow(imstack.Rij_mask,cmap=cmap_mask)
+
+    ax22.matshow(imstack.Y_ij,cmap=r'RdBu')
+    ax24.matshow(imstack.Y_ij,cmap=r'RdBu')
+    ax22.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     ax24.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     if np.sum(imstack.Rij_mask==False)!=0:
         ax24.matshow(imstack.Rij_mask,cmap=cmap_mask)
@@ -218,30 +218,18 @@ def show_report(imstack):
     # Page 3: corrected Rij maps and mask
 
     # Make figure
-    fig3,((ax31,ax32),(ax33,ax34)) = plt.subplots(2,2)
+    fig3,(ax31,ax32) = plt.subplots(1,2)
 
     ax31.matshow(imstack.X_ij_c,cmap=r'RdBu')
-    ax32.matshow(imstack.X_ij_c,cmap=r'RdBu')
     ax31.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax32.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask_c==False)!=0:
-        ax32.matshow(imstack.Rij_mask_c,cmap=cmap_mask)
 
-    ax33.matshow(imstack.Y_ij_c,cmap=r'RdBu')
-    ax34.matshow(imstack.Y_ij_c,cmap=r'RdBu')
-    ax33.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax34.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask_c==False)!=0:
-        ax34.matshow(imstack.Rij_mask_c,cmap=cmap_mask)
+    ax32.matshow(imstack.Y_ij_c,cmap=r'RdBu')
+    ax32.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
 
     ax31.axis('off')
     ax32.axis('off')
-    ax33.axis('off')
-    ax34.axis('off')
     ax31.grid(False)
     ax32.grid(False)
-    ax33.grid(False)
-    ax34.grid(False)
     fig3.tight_layout()
     fig3.suptitle("Corrected shift matrices")
     plt.show()
