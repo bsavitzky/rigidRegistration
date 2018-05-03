@@ -1,55 +1,92 @@
-# Rigid Registration
+# Image registration for tricky data
 
-We have created a new and improved method of registering stacks of images from scanning transmission electron microscopy (STEM).
-In this method, we compare every pair of images, rather than comparing all images to one reference and use the redundant information from all of these pairs to determine the shifts between each image before averaging and getting the final image. 
-See our paper in *not gonna jinx this* for more information on our methods. 
+The rigidregistration package is designed for registering and averaging scanning transmission electron microscopy data, particulary in cases where low SNRs or periodicity-induced artifacts make registration difficult.
 
-## Getting Started
 
-To start, download the entire project and put all files in a folder somewhere in your file directory where you can point to later. 
-Then make sure you have all of the prerequisites.
+## A very quick overview
 
-### Prerequisites
+Aligning and averaging many images of a single sample region can vastly improve the quality of the final, averaged image.
+However, in many applications, noisy data is unavoidal due to experimental considerations, and the resulting low SNRs may complicate or lead to incorrect image registration.
+The basic ideas in this image registration package are as follows:
 
-In order to run this program, you need either Python 2 or Python 3. If you do not already have python installed on your system, we recommend installing a version of [conda](https://conda.io/docs/user-guide/install/download.html).
-Either Anaconda or Miniconda works well, but if you use Miniconda, you may have to install more packages. 
-Once this is installed, check to make sure you have all the packages you need. The best way to do this is open your command prompt and run
+1. In a stack of $N$ images, the relative offsets between all pairs of images are calculated
+2. Physically, the relative offsets between different images must related to one another - e.g. the offsets between the first and second image and that between the second and third image should add up to the measured offset between the first and third image.
+3. Combining the physical contraint imposed by (2) with the complete set of relative shifts from (1) allows a stack of images to be registered and averaged, even in the presence of (many) low-SNR induced errors.
+
+For more detailed discussion, please see the publication associated with this package:
+"Image registration of low signal-to-noise cryo-STEM data", Ultramicroscopy (2018), DOI: 10.1016/j.ultramic.2018.04.008.
+
+
+## Getting started
+
+The code can be acquired simply by cloning this repository to your computer, using the green "Clone or download" button, or by typing into the command line
 
 ```
-pip install Jupyter
-pip install Matplotlib
-pip install Tifffile
-pip install pillow
+git clone https://github.com/bsavitzky/rigidRegistration.git
+```
+
+Next, install the code by running the setup.py script. Navigate to the rigidregistration directory then type into the command line
+
+```
+python setup.py install
+```
+
+#### Dependencies
+
+The dependencies of the package are: numpy, matplotlib, jupyter, and tifffile.
+The package is built to optionally use pyfftw, which significantly speeds up calculations.
+The first three dependencies are already available in most python implementations.
+The last two can be installed by running
+
+```
+pip install tifffile
 pip install pyfftw
 ```
-Should you already have these packages, an error will appear saying that "Requirement already satisfied". Otherwise, the package will be installed. 
-
-NOTE: pyfftw is optional. 
 
 
-### Running
+## Demo notebooks
 
-To use the python script, we have a few different implimations to use. 
-If you are unfamiliar with the python language and/or registration, using the graphic user interphase may be best. 
-To run, open a command prompt and enter
-
+The easiest way to familiarize yourself with the code, and get started using it on your own data, is with the demo notebooks, found in the samplefiles directory.
+These all .ipynb files, built to run from the jupyter notebook.
+Launch jupyter from a command line with
 
 ```
-python C:\Path\To\Registration\Download\rigidregistration\gui.py
+jupyter notebook
 ```
 
-This will open a screen with a menu bar at the top. From the menu bar, go to File > Import .tif Stack.
-From the file explorer opened, navigate to any data set stored in a .tif you have or navigate to our sample data set in rigidRegistration\samplefiles.
-After opening this file, the data will be registered and the output will display most steps of the registation process. For more information on the graphic user interphase, see [the user guide](User Guide.pdf).
+There are three sample notebooks, described below.
 
-The other implimation to look at is in an iPython notebook. This is best if you are familiar with python already. To start this, run 
+1. DetailedWalkThrough.ipynb
 
-```
-Jupter notebook
-```
+This notebook is the best place to begin.
+It works through registration of an example dataset, detailing exactly what is being done at each step of the process.
+In doing so, it discusses all the basic features of the package that may be useful in handling your own data.
 
-From the page that opens, navigate to the file directory where the rigid registration download is. In that folder go to samplefiles\sample_notebook.ipynb.
-This code already points to the sample data set we provide. Run each cell in succession (Shift+Enter will run the current cell). Read the descriptions in the notebook as needed to understand what each cell does and how the different functions of our rigid registration method applies to varying data sets.
+2. QuickWalkThrough.ipynb
+
+This notebook works through registration of an example dataset, skipping over many of the details and focusing on obtaining a final, averaged image quickly.
+
+3. MinimumWorkingExample.ipynb
+
+This notebook provides the minimal code required to obtain a registered and averaged image.
+Beginning here is not recommended, as very little explanation or comments are provided, including discussion of parameter selection which may be important for successful registration of your own data.
+The code here may provide a useful starting point for automated batch processing.
+
+
+## Graphical user interface
+
+A graphical user interface is also available, which may be helpful if you are unfamiliar with the python language.
+For more information on the GUI, including instructions for running and use, see [the user guide](User Guide.pdf).
+
+
+
+## Thank you!
+
+We hope you find this package useful in advancing your own research.
+If this code is helpful to you and your work, please consider citing the associated publication:
+"Image registration of low signal-to-noise cryo-STEM data", Ultramicroscopy (2018), DOI: 10.1016/j.ultramic.2018.04.008.
+
+
 
 
 ## Versioning
@@ -58,14 +95,21 @@ v. 1.0 - Original Release
 
 ## Authors
 
-* **Benjamin H. Savitzky** - Original Developer
-* **Emily Waite** - Graphic User Interphase Developer
+* **Benjamin H. Savitzky**
+* **Emily Waite**
+* **Lena F. Kourkoutis**
 
 ## License
 
-This project is licensed under the MIT License
+This project is licensed under the MIT License.
 
 ## Acknowledgments
 
-* Stuff about how cool Cornell is
-* And Professor Lena Kourkoutis :)
+Many thanks to everyone who has been involved with this project at every level.
+Particular thanks to the Kourkoutis research group at Cornell University for testing various versions of this code, finding bugs, and recommending essential improvements.
+Thanks to Robert Hovden for the initial inspiration and assistance in getting this project started.
+Thanks to Colin Clement for many useful discussions.
+Thanks to everyone who provided samples and experimental data, including Ismail El Baggari, Berit H. Goodge, David J. Baek, John P. Sheckelton, Christopher Pasco, Hari Nair, Nathaniel J. Schreiber, Jason Hoffman, Alemayehu S. Admasu, Jaewook Kim, Sang-Wook Cheong, Anand Bhattacharya, Darrell G. Schlom, and Tyrel M. McQueen.
+And thanks to you for using our code - we sincerely hope it is of use!
+
+
