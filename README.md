@@ -1,6 +1,6 @@
 # Image registration for tricky data
 
-The rigidregistration package is designed for registering and averaging scanning transmission electron microscopy data, particulary in cases where low SNRs or periodicity-induced artifacts make registration difficult.
+The rigidregistration package is designed for registering and averaging scanning transmission electron microscopy data, particulary in cases where low signal-to-noise ratios or periodicity-induced artifacts make registration difficult.
 
 
 ## A very quick overview
@@ -9,7 +9,7 @@ Aligning and averaging many images of a single sample region can vastly improve 
 However, in many applications, noisy data is unavoidal due to experimental considerations, and the resulting low SNRs may complicate or lead to incorrect image registration.
 The basic ideas in this image registration package are as follows:
 
-1. In a stack of $N$ images, the relative offsets between all pairs of images are calculated
+1. In a stack of images, the relative offsets between all pairs of images are calculated.
 2. Physically, the relative offsets between different images must related to one another - e.g. the offsets between the first and second image and that between the second and third image should add up to the measured offset between the first and third image.
 3. Combining the physical contraint imposed by (2) with the complete set of relative shifts from (1) allows a stack of images to be registered and averaged, even in the presence of (many) low-SNR induced errors.
 
@@ -19,7 +19,7 @@ For more detailed discussion, please see the publication associated with this pa
 
 ## Getting started
 
-The code can be acquired simply by cloning this repository to your computer, using the green "Clone or download" button, or by typing into the command line
+The code can be acquired by cloning this repository to your computer, using the green "Clone or download" button, or by typing into the command line
 
 ```
 git clone https://github.com/bsavitzky/rigidRegistration.git
@@ -36,7 +36,7 @@ python setup.py install
 The dependencies of the package are: numpy, matplotlib, jupyter, and tifffile.
 The package is built to optionally use pyfftw, which significantly speeds up calculations.
 The first three dependencies are already available in most python implementations.
-The last two can be installed by running
+The last two can be installed from the command line with
 
 ```
 pip install tifffile
@@ -46,9 +46,9 @@ pip install pyfftw
 
 ## Demo notebooks
 
-The easiest way to familiarize yourself with the code, and get started using it on your own data, is with the demo notebooks, found in the samplefiles directory.
+The easiest way to familiarize yourself with the code, and get started using it on your own data, is with the demo notebooks found in the samplefiles directory.
 These all .ipynb files, built to run from the jupyter notebook.
-Launch jupyter from a command line with
+Launch jupyter from the command line with
 
 ```
 jupyter notebook
