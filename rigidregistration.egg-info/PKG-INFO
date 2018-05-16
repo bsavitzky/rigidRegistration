@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: rigidregistration
+Version: 0.2
+Summary: Code for alignment and averaging of scanning transmission electron microscopy data.
+Home-page: http://github.com/bsavitzky/rigidregistration
+Author: Benjamin H. Savitzky
+Author-email: ben.savitzky@gmail.com
+License: MIT
+Description-Content-Type: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN

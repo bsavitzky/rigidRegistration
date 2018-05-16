@@ -4,4 +4,6 @@
 *.pkl
 ### Notebook checkpoints
 *.ipynb_checkpoints
+### Miscellaneous files
+*.DS_Store
 

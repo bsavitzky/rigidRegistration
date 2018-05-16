@@ -30,15 +30,18 @@ def save(imstack, fout, crop=True):
     metadata['Rij_mask']=imstack.Rij_mask.tolist()
     metadata['shifts_x']=imstack.shifts_x.tolist()
     metadata['shifts_y']=imstack.shifts_y.tolist()
+    metadata['xmin']=imstack.xmin
+    metadata['xmax']=imstack.xmax
+    metadata['ymin']=imstack.ymin
+    metadata['ymax']=imstack.ymax
     metadata['method_of_cross_correlation']=imstack.correlation_type
     metadata['method_of_finding_maxima']=imstack.find_maxima_method
     if imstack.find_maxima_method=="gf":
         metadata['gaussian_num_of_peaks']=imstack.num_peaks
         metadata['gaussian_sigma_guess']=imstack.sigma_guess
         metadata['gaussian_window_radius']=imstack.window_radius
-    metadata['fourier_mask_type']=imstack.fourier_mask_type
-    metadata['fourier_upper_frequency']=imstack.fourier_upper_frequency
-    metadata = json.dumps(metadata)
+    metadata['fourier_mask_parameters']=imstack.mask_params
+    metadata = json.dumps([metadata])
     if crop:
         tifffile.imsave(filepath,imstack.cropped_image.astype('float32'),description=metadata)
     else:
@@ -77,15 +80,15 @@ def save_report(imstack, fout):
     fig2,((ax21,ax22),(ax23,ax24)) = plt.subplots(2,2)
 
     ax21.matshow(imstack.X_ij,cmap=r'RdBu')
-    ax22.matshow(imstack.X_ij,cmap=r'RdBu')
+    ax23.matshow(imstack.X_ij,cmap=r'RdBu')
     ax21.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax22.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask==False)!=0:
-        ax22.matshow(imstack.Rij_mask,cmap=cmap_mask)
-
-    ax23.matshow(imstack.Y_ij,cmap=r'RdBu')
-    ax24.matshow(imstack.Y_ij,cmap=r'RdBu')
     ax23.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
+    if np.sum(imstack.Rij_mask==False)!=0:
+        ax23.matshow(imstack.Rij_mask,cmap=cmap_mask)
+
+    ax22.matshow(imstack.Y_ij,cmap=r'RdBu')
+    ax24.matshow(imstack.Y_ij,cmap=r'RdBu')
+    ax22.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     ax24.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
     if np.sum(imstack.Rij_mask==False)!=0:
         ax24.matshow(imstack.Rij_mask,cmap=cmap_mask)
@@ -102,26 +105,16 @@ def save_report(imstack, fout):
     # Page 3: Rij maps and mask
 
     # Make figure
-    fig3,((ax31,ax32),(ax33,ax34)) = plt.subplots(2,2)
+    fig3,(ax31,ax32) = plt.subplots(1,2)
 
     ax31.matshow(imstack.X_ij_c,cmap=r'RdBu')
-    ax32.matshow(imstack.X_ij_c,cmap=r'RdBu')
     ax31.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax32.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask_c==False)!=0:
-        ax32.matshow(imstack.Rij_mask_c,cmap=cmap_mask)
 
-    ax33.matshow(imstack.Y_ij_c,cmap=r'RdBu')
-    ax34.matshow(imstack.Y_ij_c,cmap=r'RdBu')
-    ax33.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    ax34.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
-    if np.sum(imstack.Rij_mask_c==False)!=0:
-        ax34.matshow(imstack.Rij_mask_c,cmap=cmap_mask)
+    ax32.matshow(imstack.Y_ij_c,cmap=r'RdBu')
+    ax32.add_patch(Rectangle((imstack.nz_min-0.5, imstack.nz_min-0.5),imstack.nz_max-imstack.nz_min,imstack.nz_max-imstack.nz_min,facecolor='none',edgecolor='k',linewidth=3))
 
     ax31.axis('off')
     ax32.axis('off')
-    ax33.axis('off')
-    ax34.axis('off')
     fig3.tight_layout()
     fig3.suptitle("Corrected shift matrices")
     report.savefig()
