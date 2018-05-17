@@ -73,13 +73,6 @@ Beginning here is not recommended, as very little explanation or comments are pr
 The code here may provide a useful starting point for automated batch processing.
 
 
-## Graphical user interface
-
-A graphical user interface is also available, which may be helpful if you are unfamiliar with the python language.
-For more information on the GUI, including instructions for running and use, see [the user guide](User Guide.pdf).
-
-
-
 ## Thank you!
 
 We hope you find this package useful in advancing your own research.
