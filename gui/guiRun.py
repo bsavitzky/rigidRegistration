@@ -18,6 +18,7 @@ import subprocess
 from tifffile import imread
 import math as math
 import sys
+import os
 if sys.version_info[0] < 3:
     import Tkinter as tk
     import Tkinter.ttk as ttk
@@ -33,10 +34,11 @@ else:
     import tkinter.filedialog as tkFileDialog
     import tkinter.constants as Tkconstats
     import tkinter.messagebox as tkMessageBox
-import os.path
+
+sys.path.append('../')
 import matplotlib.backends.backend_tkagg as tkagg
-from ..rigidregistration import rigidregistration as stackregister #This imports the local library
-from . import serReader
+from rigidregistration import stackregistration #This imports the local library
+import serReader
 
 #Initialize global variables (will be given values later)
 s=None
@@ -78,72 +80,17 @@ class CustomToolbar(tkagg.NavigationToolbar2TkAgg):
             )
         tkagg.NavigationToolbar2TkAgg.__init__(self,canvas_,parent_)
 
-# This makes the popup and the functions for making a custom mask 
-class CustomMask():
-    def __init__(self,master):
-        global loaded
-        if loaded:
-            self.master = master
-            self.pop = tk.Tk()
-            self.i=0
-            self.j=0
-            self.img=s.show_Rij(mask=True,normalization=True)
-            self.maskData=np.copy(s.Rij_mask)
-            self.original=np.copy(s.Rij_mask)
-            self.frame=tk.Frame(self.pop)
-            self.run()
-        else:
-            tkMessageBox.showwarning("Load Data","Please load images in to analze first")
-    def run(self):
-        self.pop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
-        self.pop.title('Custom Outlier Mask')
-        self.pop.resizable(width=False, height=False)
-        self.drawCanvas()
-        self.frame.grid(column=0,row=0,columnspan=2)
-        saveBtn=tk.Button(self.pop,text="Save",font=MEDIUMFONT,command=self.saving)
-        cnclBtn=tk.Button(self.pop,text="Cancel",font=MEDIUMFONT,command=self.cancel)
-        saveBtn.grid(column=0,row=1)
-        cnclBtn.grid(column=1,row=1)
-    def saving(self):
-        s.Rij_mask=self.maskData
-        self.pop.destroy()
-        recalc()
-    def cancel(self):
-        self.pop.destroy()
-    def OnMouseDown(self,event):
-        if event.inaxes is not None:
-            i=round(event.xdata)
-            j=round(event.ydata)
-            if(i>=s.nz_min and i<=s.nz_max and j>=s.nz_min and j<=s.nz_max):
-                i=i-s.nz_min
-                j=j-s.nz_min
-                if j!=i:
-                    self.maskData[i,j]=not self.maskData[i,j]
-                self.maskData[j,i]=not self.maskData[j,i]
-                s.Rij_mask=np.copy(self.maskData)
-                self.img=s.show_Rij(mask=True,normalization=True)
-                s.Rij_mask=np.copy(self.original)
-                self.drawCanvas()
-    def drawCanvas(self):
-        canvas = FigureCanvasTkAgg(self.img,self.frame)
-        canvas.show()
-        canvas.get_tk_widget().grid(column=0,row=0)
-        canvas.get_tk_widget().config(highlightthickness=0)
-        canvas.mpl_connect('button_press_event',self.OnMouseDown)
-
 #Loads default values for the calculations from defaultParam.txt
 def loadParams():
     filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"defaultParam.txt")
-    global outlierMethod,zscore,shiftMax,polycoeffmax,findMaxima,fouriern,fourierMaskType,gaussiannumpeaks,sigmaguess,windowradius
+    global threshold, maxpaths, findMaxima,fouriern,fourierMaskType,gaussiannumpeaks,sigmaguess,windowradius
     if os.path.isfile(filename):
         import imp
         f = open(filename)
         data = imp.load_source('data', '', f)
         f.close()
-        outlierMethod=data.outlierMethod
-        zscore=data.zscore
-        shiftMax=data.shiftMax
-        polycoeffmax=data.polycoeffmax
+        threshold=data.threshold
+        maxpaths=data.maxpaths
         findMaxima=data.findMaxima
         fouriern=data.fouriern
         fourierMaskType=data.fourierMaskType
@@ -152,10 +99,8 @@ def loadParams():
         windowradius=data.windowradius
         
     else:
-        outlierMethod="NN"
-        zscore=2.0
-        shiftMax=20
-        polycoeffmax=3
+        threshold=10
+        maxpaths=5
         findMaxima="pixel"
         fouriern = 4
         fourierMaskType="bandpass"
@@ -170,9 +115,9 @@ def showView(root):
     global loaded
     if loaded:
         global canvas,frame
-        figEh=plt.Figure()
+        figOut=plt.Figure()
         outerouterframe=tk.Frame()
-        canvas=tk.Canvas(outerouterframe,width=int(10.23*figEh.get_dpi()),height=int(6.5*figEh.get_dpi()))
+        canvas=tk.Canvas(outerouterframe,width=int(10.23*figOut.get_dpi()),height=int(6.5*figOut.get_dpi()))
         ysb = tk.Scrollbar(outerouterframe,orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=ysb.set)
         ysb.pack(side="right",fill="y")
@@ -352,25 +297,20 @@ def rijTrueOnMouseDown(event):
        
 #Recalculates data without redoing entire thing if parameter is changed. Saves time. Good thing
 def recalc():
-    s.get_averaged_image(crop=True)
+    s.get_averaged_image()
     global rijMaskFalse
-    rijMaskFalse = s.show_Rij(mask=False,normalization=False)
+    rijMaskFalse = s.show_Rij(mask=False,normalization=False,returnfig=True)
     global rijMaskTrue
-    rijMaskTrue = s.show_Rij(mask=True,normalization=True)
+    rijMaskTrue = s.show_Rij(mask=True,normalization=True,returnfig=True)
     global averageImage,fourierMask
-    fourierMask=s.show_Fourier_mask(image_index=0)
-    averageImage = s.show()
+    fourierMask=s.show_Fourier_mask_simple(returnfig=True)
+    averageImage = s.show(returnfig=True)
     showView(root)
 
 #Runs s.get_outliers with correct arguments        
 def outliers():
-    global outlierMethod
-    if outlierMethod=="NN":
-        global shiftMax
-        s.get_outliers("NN",shiftMax)
-    elif outlierMethod=="PF":
-        global polycoeffmax, zscore
-        s.get_outliers("PF",polycoeffmax,zscore)
+    global threshold, maxpaths
+    s.get_outliers(threshold=threshold,maxpaths=maxpaths)  
     
 #Runs when you select your data set
 def loadData(fileType):
@@ -405,8 +345,7 @@ def loadData(fileType):
             if not file.lower().endswith('.ser'):
                 tkMessageBox.showwarning('Data Type Error',"Please make sure you have selected a .ser file to use this option.")
                 return
-            stack=serReader.serReader(file)
-            s =stackregister.imstack(stack[:,:,:])	 
+            stack=serReader.serReader(file)	 
         except:
             tkMessageBox.showwarning('Data Type Error',"Please make sure you have selected a .ser file to use this option.")
             return
@@ -422,7 +361,7 @@ def loadData(fileType):
             return
         
     # Instantiate imstack object
-    s =stackregister.imstack(stack[:,:,:])	 
+    s =stackregistration.imstack(stack)	 
     global findMaxima,loaded,fouriern,fourierMaskType
     s.getFFTs()
     s.makeFourierMask(mask=fourierMaskType,n=fouriern)
@@ -622,12 +561,20 @@ def fourierPopupDisplay(radio, n, frm):
         fft1=s.fftstack[:,:,0]
         fft2=s.fftstack[:,:,int(s.nz/2)]
         nx,ny = float(s.nx),float(s.ny)
+        k_max=s.ny/n/2
         if radio=="bandpass":
-            mask = np.fft.fftshift((s.kr<float(s.ny)/n/2)*(np.sin(2*n*np.pi*s.kr/float(s.ny))*np.sin(2*n*np.pi*s.kr/float(s.ny))))
+            mask =np.fft.fftshift((s.kr<k_max)*(np.sin(2*n*np.pi*s.kr/ny)*np.sin(2*n*np.pi*s.kr/ny)))
         elif radio=="lowpass":
-            mask = np.fft.fftshift((s.kr<float(s.ny)/n/2)*(np.cos(n*np.pi*s.kr/float(s.ny))*np.cos(n*np.pi*s.kr/float(s.ny))))
+            mask = np.fft.fftshift((s.kr<k_max)*(np.cos(n*np.pi*s.kr/ny)**2))
         elif radio=="none":
             mask = np.ones_like(s.kr)
+        elif radio=="blackman":
+            mask = np.fft.fftshift((s.kr<k_max)*((21./50.)+0.5*np.cos((np.pi*s.kr)/k_max)+(2./25.)*np.cos((2*np.pi*s.kr)/k_max)))
+        elif radio=="hamming":
+            mask = np.fft.fftshift((s.kr<k_max)*((27./50.)+(23./50.)*np.cos((np.pi*s.kr)/k_max)))
+        elif radio=="gaussian":
+            mask= np.fft.fftshift(np.exp(-(s.kr/(k_max/3.))**2))
+            
         cc = np.abs(np.fft.fftshift(s.fftw.ifft(mask * fft2 * np.conj(fft1))))
         gs=gridspec.GridSpec(3,2)
         gs.update(wspace=0.05,hspace=0.05)
@@ -676,17 +623,25 @@ def fourierPopup():
         fourierNoneRadio=tk.Radiobutton(fourierRadioFrame,text="None",variable=radioText,value="none",font=SMALLFONT,command=lambda: fourierPopupDisplay("none",fourierNEntry.get(),fourierDisplayFrame))
         fourierLowRadio=tk.Radiobutton(fourierRadioFrame,text="Lowpass",variable=radioText,value="lowpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("lowpass",fourierNEntry.get(),fourierDisplayFrame))
         fourierBandRadio=tk.Radiobutton(fourierRadioFrame,text="Bandpass",variable=radioText,value="bandpass",font=SMALLFONT,command=lambda: fourierPopupDisplay("bandpass",fourierNEntry.get(),fourierDisplayFrame))
-        
+        fourierHammingRadio=tk.Radiobutton(fourierRadioFrame,text="Hamming",variable=radioText,value="hamming",font=SMALLFONT,command=lambda: fourierPopupDisplay("hamming",fourierNEntry.get(),fourierDisplayFrame))
+        fourierBlackmanRadio=tk.Radiobutton(fourierRadioFrame,text="Blackman",variable=radioText,value="blackman",font=SMALLFONT,command=lambda: fourierPopupDisplay("blackman",fourierNEntry.get(),fourierDisplayFrame))
+        fourierGaussianRadio=tk.Radiobutton(fourierRadioFrame,text="Gaussian",variable=radioText,value="gaussian",font=SMALLFONT,command=lambda: fourierPopupDisplay("gaussian",fourierNEntry.get(),fourierDisplayFrame))
         fourierRadioFrame.grid(column=0,columnspan=2,row=2)
         fourierNoneRadio.grid(column=0,row=0)
         fourierLowRadio.grid(column=0,row=1)
         fourierBandRadio.grid(column=0,row=2)
+        fourierHammingRadio.grid(column=0,row=3)
+        fourierBlackmanRadio.grid(column=0,row=4)
         if radioText.get()=="none":
             fourierNoneRadio.select()
-        elif radioText.get()=="lowpass":
+        elif radioText.get()=="lowpass" or radioText.get()=="hann":
             fourierLowRadio.select()
-        else:
+        elif radioText.get()=="bandpass":
             fourierBandRadio.select()
+        elif radioText.get()=="hamming":
+            fourierHammingRadio.select()
+        elif radioText.get() == "blackman":
+            fourierBlackmanRadio.select()
         fourierDisplayFrame=tk.Frame(fourierpop)
         fourierDisplayFrame.grid(column=3,row=0,rowspan=4)
         fourierPopupDisplay(fourierMaskType,fourierNEntry.get(),fourierDisplayFrame)
@@ -770,7 +725,7 @@ def aboutPopup():
 
 #Opens user Guide pdf 
 def openHelp():
-    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"User Guide.pdf")
+    filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"User_Guide.pdf")
     if sys.platform == "win32":
         os.startfile(filename)
     else:
@@ -815,7 +770,6 @@ def rootSetup(root):
     editmenu=tk.Menu(menubar, tearoff=0)
     editmenu.add_command(label="Change nz range",command=nzPopup)
     editmenu.add_command(label="Change Outlier Method", command=outlierPopup)
-    editmenu.add_command(label="Custom mask",command=lambda: CustomMask(master=root))
     editmenu.add_command(label="Fourier Transformation Mask",command=fourierPopup)
     editmenu.add_command(label="Change Image Shift Method",command=shiftPopup) 
     helpmenu=tk.Menu(menubar, tearoff=0)

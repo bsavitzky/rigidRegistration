@@ -141,7 +141,7 @@ def show_Rij_c(imstack,Xmax=False,Ymax=False, mask=True):
     plt.show()
     return
 
-def show_Fourier_mask(imstack,i=0,j=1):
+def show_Fourier_mask(imstack,i=0,j=1,returnfig=False):
     """
     Shows the mask used on cross correlations in Fourier space, overlaid on the Fourier
     transform of one image, and the cross correlation generated with this mask
@@ -167,9 +167,36 @@ def show_Fourier_mask(imstack,i=0,j=1):
     ax1.set_title("FFT with mask overlay")
     ax2.set_title("Masked FFT")
     ax3.set_title("Cross correlation")
-    plt.show()
-    return
+    if returnfig:
+        return fig
+    else:
+        return
+  
+def show_Fourier_mask_simple(imstack,i=0,returnfig=False):
+    """
+    Shows the mask used on cross correlations in Fourier space and overlaid on the Fourier
+    transform of one image
 
+    Inputs:
+        i       int      Image index.  FFT displayed is of image i
+    """
+    fig,(ax1,ax2)=plt.subplots(1,2,figsize=(5,2.7),dpi=100)
+    ax1.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,i]))),
+                cmap='gray',vmin=np.average(np.log(np.abs(imstack.fftstack[:,:,i]))))
+    ax1.matshow(np.fft.fftshift(imstack.mask_fourierspace),cmap='hot',alpha=0.4)
+    ax2.matshow(np.log(np.abs(np.fft.fftshift(imstack.fftstack[:,:,i]*np.where(imstack.mask_fourierspace>0.0001,imstack.mask_fourierspace,0.0001)))), cmap='gray',
+                vmin=1*np.average(np.log(np.abs(imstack.fftstack[:,:,i]))), vmax=1.8*np.average(np.log(np.abs(imstack.fftstack[:,:,i]))))
+    ax1.axis('off')
+    ax2.axis('off')
+    ax1.grid(False)
+    ax2.grid(False)
+    ax1.set_title("FFT with mask overlay",y=1)
+    ax2.set_title("Masked FFT",y=1)
+    plt.subplots_adjust(left=0.03,right=0.97,bottom=0.03,top=0.89,wspace=0.03,hspace=0.01)
+    if returnfig:
+        return fig
+    else:
+        return
 
 def show_report(imstack):
 

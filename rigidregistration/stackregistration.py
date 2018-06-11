@@ -10,13 +10,11 @@ See, e.g., stackregistration_sample_notebook.ipynb.
 from __future__ import print_function, division, absolute_import
 import numpy as np
 from math import floor, ceil
-
 # Import local libraries
 from . import display
 from . import save
 from . import FFTW
 from .utils import generateShiftedImage, gauss2d, fit_gaussian, on_edge, get_cutout, fit_peaks, getpaths, allpaths
-
 class imstack(object):
     """
     Object for functions on stacks of images.
@@ -326,7 +324,8 @@ class imstack(object):
 
     def getSingleShift_com(self,cc):
         """
-        TODO: Document this function
+        Calculates the shift between two images from their cross correlation by finding the
+        center of masses.
         """
         ccs=np.fft.fftshift(cc)
         norm=np.sum(ccs)
@@ -624,16 +623,28 @@ class imstack(object):
         display.show_Rij_c(self,Xmax=Xmax,Ymax=Ymax,mask=True)
         return
 
-    def show_Fourier_mask(self, i=0,j=1):
+    def show_Fourier_mask(self, i=0,j=1,returnfig=False):
         """
         Shows the mask used on cross correlations in Fourier space, overlaid on the Fourier
         transform of one image.
 
         Inputs:
-            image_index     int     FFT to display
+            i,j      ints     Image indices.  FFT displayed is of image i, cross correlation
+                              displayed is between images i and j.
         """
-        return display.show_Fourier_mask(self,i=i,j=j)
+        return display.show_Fourier_mask(self,i=i,j=j,returnfig=returnfig)
 
+    def show_Fourier_mask_simple(self,i=0,returnfig=False):
+        """
+        Shows the mask used on cross correlations in Fourier space and overlaid on the Fourier
+        transform of one image
+
+        Inputs:
+            i       int      Image index.  FFT displayed is of image i
+        """
+        return display.show_Fourier_mask_simple(self,i=i,returnfig=returnfig)
+    
+        
     def show_report(self):
         """
         Displays a report showing the average image, its FFT, and all shifts with and without

@@ -1,7 +1,5 @@
-outlierMethod = "NN"
-zscore = 2.0
-shiftMax = 20
-polycoeffmax = 3
+threshold=10
+maxpaths=5
 findMaxima = "pixel"
 fouriern = 4
 fourierMaskType = "bandpass"
