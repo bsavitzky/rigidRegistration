@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 
-#the mask parameters are a dictionary now, not 2 separate variables
-#Theres more mask types
-#Put elliptical masks (if you want to)
+"""
+guiRun.py
+A Graphical User Interphase to be used with rigidRegistration library
 
-# Import global libraries
+"""
+
+#Import global libraries
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg') 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.backends.backend_tkagg as tkagg
 from time import time
 from PIL import Image
 from os import listdir
@@ -35,9 +38,9 @@ else:
     import tkinter.constants as Tkconstats
     import tkinter.messagebox as tkMessageBox
 
+#Finds and imports local libraries    
 sys.path.append('../')
-import matplotlib.backends.backend_tkagg as tkagg
-from rigidregistration import stackregistration #This imports the local library
+from rigidregistration import stackregistration 
 import serReader
 
 #Initialize global variables (will be given values later)
@@ -46,15 +49,15 @@ rijMaskFalse=None
 rijMaskTrue=None
 averageImage=None
 fourierMask=None
-canvas=None
+mainCanvas=None
 frame=None
 outpop = None
 nzpop = None
+fourierpop = None
 outCoeEntry = None
 outZEntry = None
 outShiftEntry = None
-fourierpop = None
-imageFrame2=None
+imageFrameReg=None
 
 loaded=False
 sliceUn=-1
@@ -64,8 +67,12 @@ MEDIUMLARGE = ("Verdana",20)
 MEDIUMFONT= ("Verdana",14)
 SMALLFONT=("Verdana",12)
 
-#Just makes the toolbar slightly better for our purpose
+########## Methods for building actual Interface ##########
+
 class CustomToolbar(tkagg.NavigationToolbar2TkAgg):
+    """
+    Edits the toolbar library that is used on some of the figures to fit our purpose
+    """
     def __init__(self,canvas_,parent_):
         self.toolitems = (
             ('Home', 'Reset original view', 'home', 'home'),
@@ -80,8 +87,10 @@ class CustomToolbar(tkagg.NavigationToolbar2TkAgg):
             )
         tkagg.NavigationToolbar2TkAgg.__init__(self,canvas_,parent_)
 
-#Loads default values for the calculations from defaultParam.txt
 def loadParams():
+    """
+    Loads default values for the calculations from defaultParam.txt
+    """
     filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"defaultParam.txt")
     global threshold, maxpaths, findMaxima,fouriern,fourierMaskType,gaussiannumpeaks,sigmaguess,windowradius
     if os.path.isfile(filename):
@@ -107,60 +116,62 @@ def loadParams():
         gaussiannumpeaks=3
         sigmaguess=2
         windowradius=6      
-        
-#Displays the plots 
+         
 def showView(root):
+    """
+    Puts all the plots correctly into the window when all results are ready
+    """
     currentx=0
     currenty=0
     global loaded
     if loaded:
-        global canvas,frame
+        global mainCanvas,frame
         figOut=plt.Figure()
         outerouterframe=tk.Frame()
-        canvas=tk.Canvas(outerouterframe,width=int(10.23*figOut.get_dpi()),height=int(6.5*figOut.get_dpi()))
-        ysb = tk.Scrollbar(outerouterframe,orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=ysb.set)
+        mainCanvas=tk.Canvas(outerouterframe,width=int(10.23*figOut.get_dpi()),height=int(6.5*figOut.get_dpi()))
+        ysb = tk.Scrollbar(outerouterframe,orient="vertical", command=mainCanvas.yview)
+        mainCanvas.configure(yscrollcommand=ysb.set)
         ysb.pack(side="right",fill="y")
         frame=tk.Frame()
-        canvas.pack(side="left", fill="both", expand=True)
-        canvas.create_window(0,0,window=frame, anchor='nw')
+        mainCanvas.pack(side="left", fill="both", expand=True)
+        mainCanvas.create_window(0,0,window=frame, anchor='nw')
         
         global averageImage
         figFrame=tk.Frame(frame)
         figFrame.grid(column=0,row=0,pady=5,padx=5)
-        canvas1 = FigureCanvasTkAgg(averageImage, figFrame)
-        tools=CustomToolbar(canvas1, figFrame)
-        tools.update()
-        canvas1.show()
-        canvas1.get_tk_widget().config(highlightthickness=0)
-        canvas1.get_tk_widget().pack()
-        tools.pack()
+        avgImgCanvas = FigureCanvasTkAgg(averageImage, figFrame)
+        imgTools=CustomToolbar(avgImgCanvas, figFrame)
+        imgTools.update()
+        avgImgCanvas.show()
+        avgImgCanvas.get_tk_widget().config(highlightthickness=0)
+        avgImgCanvas.get_tk_widget().pack()
+        imgTools.pack()
 
         global fourierMask
         fourFrame=tk.Frame(frame)
         fourFrame.grid(column=1,row=0,pady=5,padx=5)
-        canvas4=FigureCanvasTkAgg(fourierMask,fourFrame)
-        tools2=CustomToolbar(canvas4,fourFrame)
-        tools2.update()
-        canvas4.show()
-        canvas4.get_tk_widget().config(highlightthickness=0)
-        canvas4.get_tk_widget().pack()
-        tools2.pack()
+        fourierCanvas=FigureCanvasTkAgg(fourierMask,fourFrame)
+        fourierTools=CustomToolbar(fourierCanvas,fourFrame)
+        fourierTools.update()
+        fourierCanvas.show()
+        fourierCanvas.get_tk_widget().config(highlightthickness=0)
+        fourierCanvas.get_tk_widget().pack()
+        fourierTools.pack()
 
         global rijMaskFalse
-        canvas2 = FigureCanvasTkAgg(rijMaskFalse, master=frame)
-        canvas2.get_tk_widget().config(highlightthickness=0)
-        canvas2.show()
-        canvas2.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
-        canvas2.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
-        canvas2.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
+        rijFalseCanvas = FigureCanvasTkAgg(rijMaskFalse, master=frame)
+        rijFalseCanvas.get_tk_widget().config(highlightthickness=0)
+        rijFalseCanvas.show()
+        rijFalseCanvas.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
+        rijFalseCanvas.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
+        rijFalseCanvas.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
         
         global rijMaskTrue
-        canvas3 = FigureCanvasTkAgg(rijMaskTrue, master=frame)
-        canvas3.get_tk_widget().config(highlightthickness=0)
-        canvas3.show()
-        canvas3.get_tk_widget().grid(column=1, row=1,padx=5,pady=5)
-        canvas3.mpl_connect('button_press_event',rijTrueOnMouseDown)
+        rijTrueCanvas = FigureCanvasTkAgg(rijMaskTrue, master=frame)
+        rijTrueCanvas.get_tk_widget().config(highlightthickness=0)
+        rijTrueCanvas.show()
+        rijTrueCanvas.get_tk_widget().grid(column=1, row=1,padx=5,pady=5)
+        rijTrueCanvas.mpl_connect('button_press_event',rijTrueOnMouseDown)
         
         global sliceUn
         outerframe=tk.Frame(frame)
@@ -173,36 +184,43 @@ def showView(root):
         outerframe.grid(row=2,column=0)
         forwardButtPress(imageFrame,s.imstack,"Stack Image ")
         
-        global sliceReg,stackUsed,imageFrame2,forwardButton2,backButton2
+        global sliceReg,stackUsed,imageFrameReg,forwardButton2,backButton2
         outerframe2=tk.Frame(frame)
-        imageFrame2=tk.Frame(outerframe2)
+        imageFrameReg=tk.Frame(outerframe2)
         stackUsed=s.stack_registered
-        backButton2=tk.Button(outerframe2, text="<", font=MEDIUMLARGE,command=lambda: backButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
-        forwardButton2=tk.Button(outerframe2,text=">",font=MEDIUMLARGE,command=lambda: forwardButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
+        backButton2=tk.Button(outerframe2, text="<", font=MEDIUMLARGE,command=lambda: backButtPress(imageFrameReg,stackUsed,"Registered Image ",lng=s.nz))
+        forwardButton2=tk.Button(outerframe2,text=">",font=MEDIUMLARGE,command=lambda: forwardButtPress(imageFrameReg,stackUsed,"Registered Image ",lng=s.nz))
         backButton2.pack(side="left",fill="y")
         forwardButton2.pack(side="right",fill="y")
-        imageFrame2.pack(side="top",fill="both")
+        imageFrameReg.pack(side="top",fill="both")
         outerframe2.grid(row=2,column=1)
-        forwardButtPress(imageFrame2,stackUsed,"Registered Image ")
+        forwardButtPress(imageFrameReg,stackUsed,"Registered Image ")
         
         root.update()
         outerouterframe.grid(column=0,row=0)
-        canvas.config(scrollregion=canvas.bbox("all"))
+        mainCanvas.config(scrollregion=mainCanvas.bbox("all"))
         
         root.bind("<Button-4>", mouse_wheel)
         root.bind("<Button-5>", mouse_wheel)
         root.bind("<MouseWheel>", mouse_wheel)
 
-#Scrollbar
 def mouse_wheel(event):
-    global canvas
+    """
+    Binds the mouse scrollwheel to the vertical scrollbar
+    """
+    global mainCanvas
     if sys.platform == "darwin":
-        canvas.yview_scroll(int(-1*(event.delta)), "units")
+        mainCanvas.yview_scroll(int(-1*(event.delta)), "units")
     else:
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        
-#For moving forward in the slice viewer        
+        mainCanvas.yview_scroll(int(-1*(event.delta/120)), "units")
+ 
+######## Methods for interacting with buttons in Interface ##########
+ 
 def forwardButtPress(frame,stack,txt,lng=0):
+    """
+    This moves forward to the next slice in the slice viewer
+    when the forward button is pressed
+    """
     if txt=="Stack Image ":
         global sliceUn
         if sliceUn==lng-1:
@@ -229,8 +247,11 @@ def forwardButtPress(frame,stack,txt,lng=0):
     can.get_tk_widget().grid(column=0,row=0)
     return slice
     
-#For moving backward in the slice viewer
 def backButtPress(frame,stack,txt,lng=0):
+    """
+    This moves backwards to the previous slice in the slice viewer
+    when the back button is pressed
+    """
     if txt=="Stack Image ":
         global sliceUn
         if sliceUn==0:
@@ -257,46 +278,63 @@ def backButtPress(frame,stack,txt,lng=0):
     can.get_tk_widget().grid(column=0,row=0)
     return slice
     
-#Mask=False Rij Mouse Press
 def rijFalseOnMouseDown(event):
+    """
+    Defines the event when the mouse is clicked on the unmasked rij matrixes
+    This will replace the unmasked rij with a normalized masked rij
+    """
     global frame
-    canvas2 = FigureCanvasTkAgg(s.show_Rij(mask=True,normalization=False),master=frame)
-    canvas2.get_tk_widget().config(highlightthickness=0)
-    canvas2.show()
-    canvas2.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
-    canvas2.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
-    canvas2.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
+    rijFalseCanvas = FigureCanvasTkAgg(s.show_Rij(mask=True,normalization=False,returnfig=True),master=frame)
+    rijFalseCanvas.get_tk_widget().config(highlightthickness=0)
+    rijFalseCanvas.show()
+    rijFalseCanvas.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
+    rijFalseCanvas.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
+    rijFalseCanvas.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
 
-#Mask=False Rij Mouse Release
 def rijFalseOnMouseRelease(event):
+    """
+    Defines event when mouse button is released on originally unmasked rij
+    Converts the normalized masked rij back to original unmasked rij
+    """
     global rijMaskFalse,frame
-    canvas2 = FigureCanvasTkAgg(rijMaskFalse,master=frame)
-    canvas2.get_tk_widget().config(highlightthickness=0)
-    canvas2.show()
-    canvas2.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
-    canvas2.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
-    canvas2.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
+    rijFalseCanvas = FigureCanvasTkAgg(rijMaskFalse,master=frame)
+    rijFalseCanvas.get_tk_widget().config(highlightthickness=0)
+    rijFalseCanvas.show()
+    rijFalseCanvas.get_tk_widget().grid(column=0, row=1,pady=5,padx=5)
+    rijFalseCanvas.get_tk_widget().bind("<ButtonPress-1>",rijFalseOnMouseDown)
+    rijFalseCanvas.get_tk_widget().bind("<ButtonRelease-1>",rijFalseOnMouseRelease)
 
-#Mask=True Rij Mouse Press
 def rijTrueOnMouseDown(event):
-    global stackUsed,sliceReg,imageFrame2,backButton2,forwardButton2
+    """
+    Defines event for when mouse is presed down on the masked rij
+    This will select whatever 2 slices are at the point where the user selected
+    and display just these 2 slices in the slice viewer underneath
+    """
+    global stackUsed,sliceReg,imageFrameReg,backButton2,forwardButton2
     if event.inaxes is not None:
         i=int(round(event.xdata))
         j=int(round(event.ydata))
         sliceReg=0
         stackUsed=np.dstack((s.stack_registered[:,:,i],s.stack_registered[:,:,j]))
         strng="Comparing "+str(i)+" and "+str(j)
-        backButton2.configure(command=lambda:backButtPress(imageFrame2,stackUsed,strng,lng=2))
-        forwardButton2.configure(command=lambda:forwardButtPress(imageFrame2,stackUsed,strng,lng=2))
-        forwardButtPress(imageFrame2,stackUsed,strng,lng=2)
+        backButton2.configure(command=lambda:backButtPress(imageFrameReg,stackUsed,strng,lng=2))
+        forwardButton2.configure(command=lambda:forwardButtPress(imageFrameReg,stackUsed,strng,lng=2))
+        forwardButtPress(imageFrameReg,stackUsed,strng,lng=2)
     else:
-        forwardButton2.configure(command=lambda:forwardButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
-        backButton2.configure(command=lambda:backButtPress(imageFrame2,stackUsed,"Registered Image ",lng=s.nz))
+        forwardButton2.configure(command=lambda:forwardButtPress(imageFrameReg,stackUsed,"Registered Image ",lng=s.nz))
+        backButton2.configure(command=lambda:backButtPress(imageFrameReg,stackUsed,"Registered Image ",lng=s.nz))
         stackUsed=s.stack_registered
-        forwardButtPress(imageFrame2,stackUsed,"Registered Image ")
-       
-#Recalculates data without redoing entire thing if parameter is changed. Saves time. Good thing
-def recalc():
+        forwardButtPress(imageFrameReg,stackUsed,"Registered Image ")
+ 
+########### Where most the calculations occur ##########
+ 
+def calc():
+    """
+    Does the calculations that will happen every time 
+    any parameter is changed or data is inputted
+    """
+    global threshold, maxpaths
+    s.get_outliers(threshold=threshold,maxpaths=maxpaths)  
     s.get_averaged_image()
     global rijMaskFalse
     rijMaskFalse = s.show_Rij(mask=False,normalization=False,returnfig=True)
@@ -306,14 +344,12 @@ def recalc():
     fourierMask=s.show_Fourier_mask_simple(returnfig=True)
     averageImage = s.show(returnfig=True)
     showView(root)
-
-#Runs s.get_outliers with correct arguments        
-def outliers():
-    global threshold, maxpaths
-    s.get_outliers(threshold=threshold,maxpaths=maxpaths)  
-    
-#Runs when you select your data set
+         
 def loadData(fileType):
+    """
+    Imports data into program to be analyzed
+    Also begins the analysis
+    """
     t0=time()
     global s
     if fileType=='tif':
@@ -325,7 +361,8 @@ def loadData(fileType):
             files=[]
             if(fileType=='tif'):
                 for filename in listdir(filepath):
-                    files.append(filepath+"/"+filename)
+                    if not filename.startswith("."):
+                        files.append(filepath+"/"+filename)
             im=np.array(Image.open(files[0]))
             fov=im.shape[0]
             stack=np.empty((fov,fov,len(files)))
@@ -369,26 +406,17 @@ def loadData(fileType):
     t=time()-t0
     s.set_nz(0,s.nz)
     loaded=True
-    outliers()
-    recalc()
+    calc()
     
     print("Completed calculations in {} minutes {} seconds".format(int(t/60),t%60))
-         
-#Saves the shift matrixes to a text file
-def saveTxt():
-    global loaded
-    if loaded == False:
-        tkMessageBox.showwarning("Load Data","Please load images in to analze first")
-    else:
-        fileName=tkFileDialog.asksaveasfilename(defaultextension='.txt')
-        with file(fileName, 'w') as outfile:
-            outfile.write('X shifts\n')
-            np.savetxt(outfile, s.X_ij, fmt='%-7.2f')
-            outfile.write('\nY Shifts\n')
-            np.savetxt(outfile, s.Y_ij, fmt='%-7.2f')   
-
-#This redoes the necessary parts if you change the outlier method    
+ 
+############ Redo Methods - Recalculate one part if parameters are changed ##########
+   
 def outRedo(bool,coef,z,shift):
+    """
+    Sets variables and redoes necessary calculations
+    if outlier method parameters are changed
+    """
     global polycoeffmax,zscore,shiftMax,outlierMethod
     polycoeffmax = int(coef)
     zscore = float(z)
@@ -397,34 +425,39 @@ def outRedo(bool,coef,z,shift):
         outlierMethod = "NN"
     else:
         outlierMethod="PF"
-    outliers()
     global outpop
     outpop.destroy()
-    recalc()
+    calc()
     
-#This redoes the necessary parts if you change the nz range
 def nzRedo(minText,maxText,listEntry):
+    """
+    Saves changes to the nz range and then redoes the calculations with new nz
+    """
     s.set_nz(int(minText),int(maxText)+1)
     if listEntry!="":
         s.set_bad_images(map(int,listEntry.split(",")))
     global nzpop
     nzpop.destroy()
-    outliers()
-    recalc()
+    calc()
 
-#Updates fourier mask and reruns all necessary calculations after changing it    
 def fourierRedo(n,type):
+    """
+    Updates fourier mask parameters and recalculates the mask
+    Performs all other recalculations
+    """
     global fouriern, fourierpop,fourierMaskType
     fouriern=int(n)
     fourierMaskType=type
     s.makeFourierMask(mask=type,n=fouriern)
     s.findImageShifts(correlationType="cc",findMaxima=findMaxima,verbose=False)
-    outliers()
-    recalc()
+    calc()
     fourierpop.destroy()
  
-#Updates the method used to find shifts between images and reruns all necessary calculations 
-def shiftUpdate(maxima,numPeak,sigma,windowRad):
+def shiftRedo(maxima,numPeak,sigma,windowRad):
+    """
+    Updates changed parameters for finding the shift 
+    Redoes all necessary calculations
+    """
     global shiftpop,findMaxima, gaussiannumpeaks,sigmaguess,windowradius
     findMaxima=maxima
     gaussiannumpeaks=int(numPeak)
@@ -433,32 +466,14 @@ def shiftUpdate(maxima,numPeak,sigma,windowRad):
     s.setGaussianFitParams(num_peaks=int(numPeak),sigma_guess=int(sigma),window_radius=int(windowRad))
     s.findImageShifts(correlationType="cc",findMaxima=maxima,verbose=False)
     shiftpop.destroy()
-    recalc()
- 
-#This makes the radio buttons in the change outlier method work
-def radioUpdate(bool,outCoeEntry,outZEntry,outShiftEntry):
-    if bool:
-        outCoeEntry.configure(state=tk.NORMAL)
-        outZEntry.configure(state=tk.NORMAL)
-        outShiftEntry.configure(state=tk.DISABLED)
-    else:
-        outCoeEntry.configure(state=tk.DISABLED)
-        outZEntry.configure(state=tk.DISABLED)
-        outShiftEntry.configure(state=tk.NORMAL)
-
-#This makes the radio buttons in the Change Shift Method work        
-def otherRadioUpdate(selection,numPeakEntry,sigmaEntry,windowRadEntry):
-    numPeakEntry.configure(state=tk.DISABLED)
-    sigmaEntry.configure(state=tk.DISABLED)
-    windowRadEntry.configure(state=tk.DISABLED)
-
-    if selection=="gf":
-        numPeakEntry.configure(state=tk.NORMAL)
-        sigmaEntry.configure(state=tk.NORMAL)
-        windowRadEntry.configure(state=tk.NORMAL)
-             
-#This creates the popup to change the settings when you change outlier method
+    calc()
+          
+########### Methods for Creating various pop-ups ##########
+          
 def outlierPopup():
+    """
+    Creates pop-up to edit the Outlier method
+    """
     global loaded
     if loaded:
         global outpop
@@ -501,9 +516,9 @@ def outlierPopup():
         outShiftEntry.grid(column=1,row=0)
         outShiftEntry.insert(0,shiftMax)
         
-        outFitRadio=tk.Radiobutton(outframe, font=MEDIUMFONT,text="Use Polynomial Fit", variable=v, value=True,command=lambda: radioUpdate(True,outCoeEntry,outZEntry,outShiftEntry))
-        outAroundRadio=tk.Radiobutton(outframe, font=MEDIUMFONT, text="Use nearest points", variable=v, value=False,command=lambda: radioUpdate(False,outCoeEntry,outZEntry,outShiftEntry))
-        radioUpdate(v.get(),outCoeEntry,outZEntry,outShiftEntry)
+        outFitRadio=tk.Radiobutton(outframe, font=MEDIUMFONT,text="Use Polynomial Fit", variable=v, value=True,command=lambda: OutlierRadioUpdate(True,outCoeEntry,outZEntry,outShiftEntry))
+        outAroundRadio=tk.Radiobutton(outframe, font=MEDIUMFONT, text="Use nearest points", variable=v, value=False,command=lambda: OutlierRadioUpdate(False,outCoeEntry,outZEntry,outShiftEntry))
+        OutlierRadioUpdate(v.get(),outCoeEntry,outZEntry,outShiftEntry)
         outFitRadio.grid(column=0, row=0)
         outAroundRadio.grid(column=1,row=0)
         if v.get():
@@ -519,8 +534,10 @@ def outlierPopup():
     else:
        tkMessageBox.showwarning("Load Data","Please load images in to analyze first.") 
        
-#This makes the popup to change the settings for the nz range
 def nzPopup():
+    """
+    Creates pop-up to change the rangne of stack used
+    """
     global loaded
     if loaded:
         global nzpop
@@ -554,53 +571,10 @@ def nzPopup():
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analze first")
 
-#Updatesthe FFT an cross correlation seen in the fourier popup when you change something
-def fourierPopupDisplay(radio, n, frm):
-    if n.isdigit():
-        n=int(n)
-        fft1=s.fftstack[:,:,0]
-        fft2=s.fftstack[:,:,int(s.nz/2)]
-        nx,ny = float(s.nx),float(s.ny)
-        k_max=s.ny/n/2
-        if radio=="bandpass":
-            mask =np.fft.fftshift((s.kr<k_max)*(np.sin(2*n*np.pi*s.kr/ny)*np.sin(2*n*np.pi*s.kr/ny)))
-        elif radio=="lowpass":
-            mask = np.fft.fftshift((s.kr<k_max)*(np.cos(n*np.pi*s.kr/ny)**2))
-        elif radio=="none":
-            mask = np.ones_like(s.kr)
-        elif radio=="blackman":
-            mask = np.fft.fftshift((s.kr<k_max)*((21./50.)+0.5*np.cos((np.pi*s.kr)/k_max)+(2./25.)*np.cos((2*np.pi*s.kr)/k_max)))
-        elif radio=="hamming":
-            mask = np.fft.fftshift((s.kr<k_max)*((27./50.)+(23./50.)*np.cos((np.pi*s.kr)/k_max)))
-        elif radio=="gaussian":
-            mask= np.fft.fftshift(np.exp(-(s.kr/(k_max/3.))**2))
-            
-        cc = np.abs(np.fft.fftshift(s.fftw.ifft(mask * fft2 * np.conj(fft1))))
-        gs=gridspec.GridSpec(3,2)
-        gs.update(wspace=0.05,hspace=0.05)
-        fig=plt.figure(figsize=(3,4.6))
-        fig.subplots_adjust(wspace=0,hspace=0,left=0.01,right=0.99,top=0.99,bottom=0.01)
-        ax1=plt.subplot(gs[0,0])
-        ax2=plt.subplot(gs[0,1])
-        ax=plt.subplot(gs[1:3,0:2])
-        tempdetemp=np.log(np.abs(np.fft.fftshift(fft1)))
-        ax1.matshow(tempdetemp[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(tempdetemp.ravel()))
-        ax1.matshow(np.fft.fftshift(mask)[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='hot',alpha=0.3)
-        ax2.matshow(np.log(np.abs(np.fft.fftshift(fft1*np.where(mask,mask,0.001))))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(fft1)))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)].ravel()))
-        ax1.axis('off')
-        ax2.axis('off')
-        ax.matshow(cc,cmap="viridis",vmin=np.mean(np.log(np.abs(cc))).ravel())
-        ax.axis('off')
-        fourierCnvs=FigureCanvasTkAgg(fig, frm)
-        fourierCnvs.show()
-        fourierCnvs.get_tk_widget().grid(row=0,column=0)
-
-#This was necessary for some reason, its really stupid
-def fourierTraceUpdate(event, radio, n, frm):
-    fourierPopupDisplay(radio.get(), n.get(), frm)
-
-#This makes the popup to change if there is a fourier transform mask or not
 def fourierPopup():
+    """
+    Creates pop-up to edit the Fourier Mask
+    """
     global loaded
     if loaded:
         global fourierpop, fouriern,fourierMaskType
@@ -657,8 +631,10 @@ def fourierPopup():
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
 
-#This one makes a popup to change the way it calculates the shifts between the images (yay!)
 def shiftPopup():
+    """
+    Creates pop-up to edit the method of finding shifts between images
+    """
     global loaded
     if loaded:
         global shiftpop,findMaxima,gaussiannumpeaks,sigmaguess,windowradius,numiter,minwindowfrac
@@ -669,8 +645,8 @@ def shiftPopup():
         maximaFrame.grid(row=0,column=0,columnspan=2)
         maximaRadio=tk.StringVar(shiftpop)
         maximaRadio.set(findMaxima)
-        maximaPixelRadio=tk.Radiobutton(maximaFrame,text="Pixel",variable=maximaRadio,value="pixel",font=SMALLFONT,command=lambda: otherRadioUpdate("pixel",numPeakEntry,sigmaEntry,windowRadEntry))
-        maximaGfRadio=tk.Radiobutton(maximaFrame,text="Subpixel by Gaussian Fit",variable=maximaRadio,value="gf",font=SMALLFONT,command=lambda: otherRadioUpdate("gf",numPeakEntry,sigmaEntry,windowRadEntry))
+        maximaPixelRadio=tk.Radiobutton(maximaFrame,text="Pixel",variable=maximaRadio,value="pixel",font=SMALLFONT,command=lambda: shiftRadioUpdate("pixel",numPeakEntry,sigmaEntry,windowRadEntry))
+        maximaGfRadio=tk.Radiobutton(maximaFrame,text="Subpixel by Gaussian Fit",variable=maximaRadio,value="gf",font=SMALLFONT,command=lambda: shiftRadioUpdate("gf",numPeakEntry,sigmaEntry,windowRadEntry))
         maximaPixelRadio.grid(column=0,row=0)
         maximaGfRadio.grid(column=1,row=0)
         if findMaxima=="pixel":
@@ -697,17 +673,19 @@ def shiftPopup():
         sigmaEntry.grid(column=1,row=1)
         windowRadLabel.grid(column=0,row=2)
         windowRadEntry.grid(column=1,row=2)
-        shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftUpdate(maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
+        shiftSaveButton=tk.Button(shiftpop,text="Save",font=MEDIUMFONT,command=lambda: shiftRedo(maximaRadio.get(),numPeakEntry.get(),sigmaEntry.get(),windowRadEntry.get(),))
         shiftSaveButton.grid(column=0,row=2)
         shiftCancelButton=tk.Button(shiftpop,text="Cancel",font=MEDIUMFONT,command=shiftpop.destroy)
         shiftCancelButton.grid(column=1,row=2)
-        otherRadioUpdate(maximaRadio.get(),numPeakEntry,sigmaEntry,windowRadEntry)
+        shiftRadioUpdate(maximaRadio.get(),numPeakEntry,sigmaEntry,windowRadEntry)
         shiftpop.mainloop()
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analyze first.") 
     
-#This makes the great about popup
 def aboutPopup():
+    """
+    Creates pop-up with information on this program
+    """
     aboutPop=tk.Tk()
     aboutPop.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
     aboutPop.title("About")
@@ -722,9 +700,91 @@ def aboutPopup():
     t4.grid(column=0,row=3)
     t5=tk.Label(aboutPop,text="Department of Applied and Engineering Physics, Cornell University",font=SMALLFONT)
     t5.grid(column=0,row=4)
+ 
+########### Methods that help the pop-ups ###########
+ 
+def fourierTraceUpdate(event, radio, n, frm):
+    """
+    Starts the figure update when the Enter key is pressed
+    """
+    fourierPopupDisplay(radio.get(), n.get(), frm) 
 
-#Opens user Guide pdf 
+def fourierPopupDisplay(radio, n, frm):
+    """
+    Makes the figure in the fourier pop-up
+    Updates every time something is changed
+    """
+    if n.isdigit():
+        n=int(n)
+        fft1=s.fftstack[:,:,0]
+        fft2=s.fftstack[:,:,int(s.nz/2)]
+        nx,ny = float(s.nx),float(s.ny)
+        k_max=s.ny/n/2
+        if radio=="bandpass":
+            mask =np.fft.fftshift((s.kr<k_max)*(np.sin(2*n*np.pi*s.kr/ny)*np.sin(2*n*np.pi*s.kr/ny)))
+        elif radio=="lowpass":
+            mask = np.fft.fftshift((s.kr<k_max)*(np.cos(n*np.pi*s.kr/ny)**2))
+        elif radio=="none":
+            mask = np.ones_like(s.kr)
+        elif radio=="blackman":
+            mask = np.fft.fftshift((s.kr<k_max)*((21./50.)+0.5*np.cos((np.pi*s.kr)/k_max)+(2./25.)*np.cos((2*np.pi*s.kr)/k_max)))
+        elif radio=="hamming":
+            mask = np.fft.fftshift((s.kr<k_max)*((27./50.)+(23./50.)*np.cos((np.pi*s.kr)/k_max)))
+        elif radio=="gaussian":
+            mask= np.fft.fftshift(np.exp(-(s.kr/(k_max/3.))**2))
+            
+        cc = np.abs(np.fft.fftshift(s.fftw.ifft(mask * fft2 * np.conj(fft1))))
+        gs=gridspec.GridSpec(3,2)
+        gs.update(wspace=0.05,hspace=0.05)
+        fig=plt.figure(figsize=(3,4.6))
+        fig.subplots_adjust(wspace=0,hspace=0,left=0.01,right=0.99,top=0.99,bottom=0.01)
+        ax1=plt.subplot(gs[0,0])
+        ax2=plt.subplot(gs[0,1])
+        ax=plt.subplot(gs[1:3,0:2])
+        tempdetemp=np.log(np.abs(np.fft.fftshift(fft1)))
+        ax1.matshow(tempdetemp[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(tempdetemp.ravel()))
+        ax1.matshow(np.fft.fftshift(mask)[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='hot',alpha=0.3)
+        ax2.matshow(np.log(np.abs(np.fft.fftshift(fft1*np.where(mask,mask,0.001))))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)],cmap='gray',vmin=np.mean(np.log(np.abs(np.fft.fftshift(fft1)))[int(s.nx/4):int(3*s.nx/4),int(s.ny/4):int(3*s.ny/4)].ravel()))
+        ax1.axis('off')
+        ax2.axis('off')
+        ax.matshow(cc,cmap="viridis",vmin=np.mean(np.log(np.abs(cc))).ravel())
+        ax.axis('off')
+        fourierCnvs=FigureCanvasTkAgg(fig, frm)
+        fourierCnvs.show()
+        fourierCnvs.get_tk_widget().grid(row=0,column=0)
+
+def OutlierRadioUpdate(bool,outCoeEntry,outZEntry,outShiftEntry):
+    """
+    Makes the radio buttons in the outlier pop-up work properly
+    """
+    if bool:
+        outCoeEntry.configure(state=tk.NORMAL)
+        outZEntry.configure(state=tk.NORMAL)
+        outShiftEntry.configure(state=tk.DISABLED)
+    else:
+        outCoeEntry.configure(state=tk.DISABLED)
+        outZEntry.configure(state=tk.DISABLED)
+        outShiftEntry.configure(state=tk.NORMAL)
+   
+def shiftRadioUpdate(selection,numPeakEntry,sigmaEntry,windowRadEntry):
+    """
+    Makes the radio buttons in the shift pop-up work properly
+    """
+    numPeakEntry.configure(state=tk.DISABLED)
+    sigmaEntry.configure(state=tk.DISABLED)
+    windowRadEntry.configure(state=tk.DISABLED)
+
+    if selection=="gf":
+        numPeakEntry.configure(state=tk.NORMAL)
+        sigmaEntry.configure(state=tk.NORMAL)
+        windowRadEntry.configure(state=tk.NORMAL)
+                
+########### Defines other menu items that are not pop-ups ############# 
+ 
 def openHelp():
+    """
+    Opens User Guide pdf in user's default PDF program
+    """
     filename=os.path.join(os.path.dirname(os.path.abspath(__file__)),"User_Guide.pdf")
     if sys.platform == "win32":
         os.startfile(filename)
@@ -733,6 +793,9 @@ def openHelp():
         subprocess.call([opener, filename]) 
 
 def saveReport():
+    """
+    Saves PDF report that includes averaged image, Rij matrices, FFT, etc. 
+    """
     global loaded
     if loaded:
         file=tkFileDialog.asksaveasfilename(defaultextension='.pdf')
@@ -743,6 +806,9 @@ def saveReport():
         tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
 
 def saveImage():
+    """
+    Saves .tif of averaged image
+    """
     global loaded
     if loaded:
         file=tkFileDialog.asksaveasfilename(defaultextension='.tif')
@@ -751,9 +817,29 @@ def saveImage():
         s.save(file)
     else:
         tkMessageBox.showwarning("Load Data","Please load images in to analyze first.")
+
+def saveTxt():
+    """
+    Saves the shift matrices to a .txt file
+    """
+    global loaded
+    if loaded == False:
+        tkMessageBox.showwarning("Load Data","Please load images in to analze first")
+    else:
+        fileName=tkFileDialog.asksaveasfilename(defaultextension='.txt')
+        with file(fileName, 'w') as outfile:
+            outfile.write('X shifts\n')
+            np.savetxt(outfile, s.X_ij, fmt='%-7.2f')
+            outfile.write('\nY Shifts\n')
+            np.savetxt(outfile, s.Y_ij, fmt='%-7.2f')           
         
-#Makes the basic window and the menu bars you need
+########## Root Set-up and Execution ##########
+        
 def rootSetup(root):
+    """
+    Makes the basic window with all of the menus
+    Controls all of the menu options
+    """
     root.iconbitmap(os.path.join(os.path.dirname(os.path.abspath(__file__)),"favicon.ico"))
     root.title('Grr')
     fig=plt.Figure()
@@ -783,4 +869,5 @@ def rootSetup(root):
 loadParams()    
 root = tk.Tk()
 rootSetup(root)
+root.protocol("WM_DELETE_WINDOW", quit)
 root.mainloop()  

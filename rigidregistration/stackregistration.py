@@ -643,8 +643,7 @@ class imstack(object):
             i       int      Image index.  FFT displayed is of image i
         """
         return display.show_Fourier_mask_simple(self,i=i,returnfig=returnfig)
-    
-        
+         
     def show_report(self):
         """
         Displays a report showing the average image, its FFT, and all shifts with and without
