@@ -89,7 +89,7 @@ v. 1.0 - Original Release
 ## Authors
 
 * **Benjamin H. Savitzky**
-* **Emily Waite**
+* **Emily N. Waite**
 * **Lena F. Kourkoutis**
 
 ## License
