@@ -43,9 +43,9 @@ def save(imstack, fout, crop=True):
     metadata['fourier_mask_parameters']=imstack.mask_params
     metadata = json.dumps([metadata])
     if crop:
-        tifffile.imsave(filepath,imstack.cropped_image.astype('float32'),description=metadata)
+        tifffile.imwrite(filepath,imstack.cropped_image.astype('float32'),description=metadata)
     else:
-        tifffile.imsave(filepath,imstack.average_image.astype('float32'),description=metadata)
+        tifffile.imwrite(filepath,imstack.average_image.astype('float32'),description=metadata)
     return
 
 def save_report(imstack, fout):
